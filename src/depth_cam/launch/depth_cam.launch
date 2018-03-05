@@ -1,0 +1,14 @@
+<launch>
+
+<!-- Depth_Image_Capture Node -->
+<node pkg="depth_cam" type="dep_img_cap.py" name="depth_image_cap" output="screen">
+        <remap from="Raw_Image"  to="/camera/depth/image_raw" />
+	    <param name="ymin" value="325" />
+        <param name="ymax" value="425" />
+        <param name="xmin" value="410" />
+        <param name="xmax" value="620" />
+        <rosparam>
+     </rosparam>
+</node>  
+</launch>
+

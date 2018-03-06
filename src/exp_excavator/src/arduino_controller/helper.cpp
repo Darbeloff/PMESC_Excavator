@@ -9,21 +9,27 @@
 
 
 // methods relating to arduino management
-void motorClass::inputPins(int current, int speed, int enable, int direction, int encoder){
-    currentCommandPin = current;
-    speedFeedbackPin  = speed;
+void motorClass::inputPins(int command, int speedd, int current, int enable, int directionn, int encoder){
+    CommandPin        = command;
+    speedFeedbackPin  = speedd;
+    currentFeedbackPin= current;
     enablePin         = enable;
-    directionPin      = direction;
+    directionPin      = directionn;
     encoderSlavePin   = encoder;
 }
 
 void motorClass::arduinoPinSetupMotor(void){
     pinMode(enablePin, OUTPUT);
     pinMode(directionPin, OUTPUT);
-    pinMode(currentCommandPin, OUTPUT);
+    pinMode(CommandPin, OUTPUT);
     digitalWrite(enablePin,HIGH);
 }
-
+void motorClass::enableMotor(void){
+    digitalWrite(enablePin,HIGH);
+}
+void motorClass::disableMotor(void){
+    digitalWrite(enablePin,LOW);
+}
 void motorClass::initEncoder(void) {
   // Set slave selects as outputs
   pinMode(encoderSlavePin, OUTPUT);
@@ -33,54 +39,88 @@ void motorClass::initEncoder(void) {
 }
 
 unsigned int long motorClass::readEncoder(void){
-  SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE1));
+    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE1));
     unsigned int AS5147P_angle;
     noInterrupts();           // disable all interrupts
     
-      digitalWrite(encoderSlavePin,LOW);      // Begin SPI conversation
-      delayMicroseconds(1);
-      SPI.transfer16(0xFFFF);                     // Request count
-      digitalWrite(encoderSlavePin,HIGH);     // Terminate SPI conversation     
-      
-      digitalWrite(encoderSlavePin,LOW);      // Begin SPI conversation
-      delayMicroseconds(1);
-      AS5147P_angle = SPI.transfer16(0xC000);           // Read highest order byte
-      digitalWrite(encoderSlavePin,HIGH);     // Terminate SPI conversation
-      SPI.endTransaction();
-      AS5147P_angle = (AS5147P_angle & (0x3FFF));
+    digitalWrite(encoderSlavePin,LOW);      // Begin SPI conversation
+    delayMicroseconds(1);
+    SPI.transfer16(0xFFFF);                     // Request count
+    digitalWrite(encoderSlavePin,HIGH);     // Terminate SPI conversation     
+    
+    digitalWrite(encoderSlavePin,LOW);      // Begin SPI conversation
+    delayMicroseconds(1);
+    AS5147P_angle = SPI.transfer16(0xC000);           // Read highest order byte
+    digitalWrite(encoderSlavePin,HIGH);     // Terminate SPI conversation
+    SPI.endTransaction();
+    AS5147P_angle = (AS5147P_angle & (0x3FFF));
       
     unsigned int long AS5147P = ( (unsigned long) AS5147P_angle);
     encodercount = AS5147P;
-    interrupts();             // enable all interrupts
 
-    return AS5147P;
+    if    ( encodercountPrev>ENC_THRESH_HIGH && encodercount < ENC_THRESH_LOW){
+        encoderticker++;
+    }
+    else if (encodercountPrev<ENC_THRESH_LOW && encodercount > ENC_THRESH_HIGH){
+        encoderticker--;
+    }    
+    
+    encodercountPrev = encodercount;
+    encoderpos = 2.0*3.14159*(float(encodercount)/16384 + float(encoderticker));
+    
+    interrupts();             // enable all interrupts
 }
 
-int motorClass::arduinoReadValues(void){
+float motorClass::positionencoder(void){
+ float pos = 1.0;
+    return pos;
+}
+
+float motorClass::arduinoReadValuesSpeed(void){
 int analog_speed_value_bits;
 analog_speed_value_bits = analogRead(speedFeedbackPin);
-MotorVel = analog_speed_value_bits;
-return analog_speed_value_bits;
+MotorVel = 2*78.5*analog_speed_value_bits/818.4-78.5;
+//return analog_speed_value_bits;
+return MotorVel;
 }
 
-void motorClass::arduinoWrite(void){
+
+float motorClass::arduinoReadValuesCurrent(void){
+int analog_current_value_bits;
+analog_current_value_bits = analogRead(currentFeedbackPin);
+MotorCurrent = 2*ESCON_CURRENT_MAX*analog_current_value_bits/818.4-ESCON_CURRENT_MAX ;
+//return analog_speed_value_bits;
+return MotorCurrent;
+}
+
+int motorClass::arduinoWriteCurrent(void){
    int analogOutBits;
-   analogOutBits = ANALOG_OUT_BITS*(ESCON_PWM_RANGE*currentCommand/ESCON_CURRENT_MAX + ESCON_PWM_MIN);
-   analogWrite(currentCommandPin,analogOutBits);
+   float pwm_duty;
+   pwm_duty      = (ESCON_PWM_RANGE/ESCON_CURRENT_MAX)*abs(currentCommand) + ESCON_PWM_MIN;
+   analogOutBits = ANALOG_OUT_BITS*(pwm_duty);
+   analogWrite(CommandPin,analogOutBits);
    digitalWrite(directionPin,currentCommand>0);
+   return currentCommand>0;
 }
 
-void motorClass::inputVelocityPidGains(float proportional,float derivative,float integral){
+
+int motorClass::arduinoWriteSpeed(void){
+   int analogOutBits;
+   float pwm_duty;
+   pwm_duty      = (ESCON_PWM_RANGE/ESCON_SPEED_MAX)*abs(speedCommand) + ESCON_PWM_MIN;
+   analogOutBits = ANALOG_OUT_BITS*(pwm_duty);
+   analogWrite(CommandPin,analogOutBits);
+   digitalWrite(directionPin,speedCommand>0);
+   return speedCommand>0;
+}
+
+void motorClass::inputVelocityPidGains(float proportional,float integral,float tau_derivative,float alpha_derivative){
     Kpv = proportional;
-    Kdv = derivative;
     Kiv = integral;
+    tau_d = tau_derivative;
+    alpha_d = alpha_derivative;
 }
 
-int motorClass::openLoopController(void){
-  //set scale factor value for to map from minimum pwm output to maximum pwm output
-  currentCommand = desiredMotorVel * 0;//some_scale_factor;
-  return 0;
-}
 
 void motorClass::storeOldVals(void){
   prevTime = currentTime;
@@ -90,7 +130,8 @@ void motorClass::storeOldVals(void){
 
 void motorClass::calc_t(){
   currentTime = millis();
-  dt = currentTime - prevTime;
+  //dt = 0.001*(currentTime - prevTime);
+   dt = 0.0017;
 }
 
 float motorClass::motor_velocity_calc(void){
@@ -100,38 +141,116 @@ float motorClass::motor_velocity_calc(void){
   return MotorVel; 
 }
 
-float motorClass::proportional_control(void){
+/*
+float motorClass::closedLoopControllerCurrent(void){
+  float y_I;
+  float e_d;
+  float y_d;
+  float term_test;
+  calc_t();
+
   errorVel = desiredMotorVel - MotorVel;
-  pCommand = Kpv * errorVel;
-  return pCommand;
-}
-
-float motorClass::derivative_control(void){
-  calc_t();
-  dCommand = Kdv * (errorVel - errorVelPrev) / dt;
-  return dCommand;
-}
-
-float motorClass::integral_control(void){
-  calc_t();
-  integratedVelError = integratedVelError + errorVel*dt;
   
-  iCommand = Kiv*integratedVelError;
+  y_I = Kpv*0.5*Kiv*dt*(errorVel+errorVelPrev) + y_I_minus1;
+  
+  if ( y_I > MAX_i ){
+    y_I = 0.02*MAX_i;
+  }
+  else if ( y_I < MIN_i ){
+    y_I  = 0.02*MIN_i;
+  }
+  
+  if ( dt < 0.001 ){
+    dt = 1/250.0;
+  }
+  e_d = Kpv*errorVel + y_I;
+  y_d = y_d_minus1*(2*tau_d/dt -1.0) + e_d_minus1*(1.0 - 2*alpha_d*tau_d/dt)+ e_d*(2*alpha_d*tau_d/dt +1.0); //y_d_minus1*(2*tau_d/dt -1.0)
+  currentCommand = y_d;
 
-  //deal with integral windup
-  if ( iCommand > MAX_PWM ){
-    iCommand = MAX_PWM;
-    integratedVelError = 0; //subject to change
+
+  prevTime = currentTime;
+  errorVelPrev = errorVel;
+  encodercountPrev = encodercount;
+  
+  y_I_minus1 = y_I;
+  e_d_minus1 = e_d;
+  y_d_minus1 = y_d;
+  
+  return y_d; 
+}
+*/
+float motorClass::closedLoopControllerSpeed(void){
+  speedCommand = desiredMotorVel;
+
+  float y_I;
+  float e_d;
+  float y_d;
+  float term_test;
+  calc_t();
+
+  errorVel = desiredMotorVel - MotorVel;
+  
+  y_I = Kpv*0.5*Kiv*dt*(errorVel+errorVelPrev) + y_I_minus1;
+  
+  if ( y_I > MAX_i ){
+    y_I = 0.02*MAX_i;
   }
-  else if ( iCommand < MIN_PWM ){
-    iCommand = MIN_PWM;
-    integratedVelError = 0;
+  else if ( y_I < MIN_i ){
+    y_I  = 0.02*MIN_i;
   }
-  return iCommand;
+  
+  e_d = Kpv*errorVel + y_I;
+  y_d = y_d_minus1*(2*(1/alpha_d)*tau_d/dt -1.0) + e_d_minus1*(1.0 - 2*tau_d/dt)+ e_d*(2*tau_d/dt +1.0); //y_d_minus1*(2*tau_d/dt -1.0)
+  currentCommand = y_d;
+
+
+  prevTime = currentTime;
+  errorVelPrev = errorVel;
+  encodercountPrev = encodercount;
+  
+  y_I_minus1 = y_I;
+  e_d_minus1 = e_d;
+  y_d_minus1 = y_d;
+  
+  currentCommand = y_I;
+  //currentCommand = dt;
+  return currentCommand;
 }
 
-float motorClass::closedLoopController(void){
-  currentCommand = proportional_control() + derivative_control();// + integral_control();
-  return currentCommand; 
+float motorClass::closedLoopControllerInternalRes(void){
+    float R  =  ARM_BIAS/60.0;
+    
+   currentCommand = ARM_BIAS - MotorVel*R;
+   
+  if ( MotorVel > ARM_BIAS/R  ){
+   currentCommand = 0;
+  }
+  else if (MotorVel < 0){
+    currentCommand = ARM_BIAS;
+  }    
+    return currentCommand; 
 }
+
+void motorClass::setdesiredMotorVel(float desiredVel){
+  desiredMotorVel = desiredVel;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

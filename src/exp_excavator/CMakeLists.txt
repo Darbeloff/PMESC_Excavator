@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   JointValues.msg
+  JointStatesMachine.msg
   JointCalibration.msg
   JointCommand.msg
   PowerMachine.msg

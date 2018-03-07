@@ -4,8 +4,11 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt16.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Float32MultiArray.h>
+#include <exp_excavator/JointStatesMachine.h>
 
 #include <SPI.h>
+
 
 unsigned int currentCommandArm;
 unsigned int currentCommandBoom;
@@ -25,12 +28,14 @@ ros::NodeHandle  nh;
 std_msgs::Float32 hz_loop_msg;
 std_msgs::Float32 vel_actual_msg;
 std_msgs::Float32 cur_actual_msg;
-std_msgs::UInt16 enc_actual_msg;
+std_msgs::Float32 enc_actual_msg;
+exp_excavator::JointStatesMachine joint_states_msg;
 
-ros::Publisher loop_freq("loop_freq",  &hz_loop_msg);
+
+ros::Publisher loop_freq("loop_freq"  ,  &hz_loop_msg);
 ros::Publisher vel_actual("vel_actual",  &vel_actual_msg);
 ros::Publisher cur_actual("cur_actual",  &cur_actual_msg);
-ros::Publisher enc_actual("enc_actual", &enc_actual_msg);
+ros::Publisher enc_actual("enc_actual",  &enc_actual_msg);
 
 void referenceCb(const std_msgs::Empty& msg)
 { vel_actual_msg.data = motorArm.MotorVel;
@@ -47,13 +52,20 @@ void referenceCb(const std_msgs::Empty& msg)
   loop_freq.publish( &hz_loop_msg);
 }
 
+void calibrationCb(const std_msgs::Float32MultiArray& msg)
+{ 
+  //motorBoom.positionCalibration = msg.data[0];
+  motorArm.positionCalibration  = msg.data[1];
+}
+
 ros::Subscriber<std_msgs::Empty> reference_sub("reference", &referenceCb);
+ros::Subscriber<std_msgs::Float32MultiArray> calibration_sub("calibration", &calibrationCb);
 
 void setup()
 {
     motorArm.inputPins(PWM_COMMAND_PIN_ARM, ANALOG_SPEED_PIN_ARM, ANALOG_CURRENT_PIN_ARM, ENABLE_PIN_ARM, DIRECTION_PIN_ARM,SLAVE_SELECT_ENCODER_PIN_ARM);
     motorArm.arduinoPinSetupMotor();
-    motorArm.inputVelocityPidGains(K_v_PROPORTIONAL,K_v_INTEGRAL,TAU_d,ALPHA_d);//Set Gains
+    motorArm.inputVelocityPidGains(K_v_PROPORTIONAL,TAU_i,TAU_d,ALPHA_d);//Set Gains
     motorArm.initEncoder();
     
    
@@ -84,17 +96,14 @@ void loop()
   motorArm.readEncoder();
   motorArm.arduinoReadValuesSpeed();
   motorArm.arduinoReadValuesCurrent();
- 
- 
-  v_desired = 50*sign(sin(0.0005*millis()));
+
+  v_desired = 50*(sin(0.0005*millis()));
   motorArm.setdesiredMotorVel(v_desired);
   
   //motorArm.closedLoopControllerInternalRes();
-  motorArm.closedLoopControllerSpeed();
+  motorArm.CLC();
   motorArm.arduinoWriteCurrent();
 
-//  vel_actual.publish( &vel_actual_msg );
-//  vel_desired.publish( &vel_desired_msg );
   i++;
   nh.spinOnce();
   delay(1);

@@ -64,9 +64,9 @@ unsigned int long motorClass::readEncoder(void){
     else if (encodercountPrev<ENC_THRESH_LOW && encodercount > ENC_THRESH_HIGH){
         encoderticker--;
     }    
-    
+    encoderpos = 2.0*3.14159*(float(encodercount)/16384.0 + float(encoderticker));
     encodercountPrev = encodercount;
-    encoderpos = 2.0*3.14159*(float(encodercount)/16384 + float(encoderticker));
+   
     
     interrupts();             // enable all interrupts
 }
@@ -79,7 +79,7 @@ float motorClass::positionencoder(void){
 float motorClass::arduinoReadValuesSpeed(void){
 int analog_speed_value_bits;
 analog_speed_value_bits = analogRead(speedFeedbackPin);
-MotorVel = 2*78.5*analog_speed_value_bits/818.4-78.5;
+MotorVel = 2*78.5*analog_speed_value_bits/818.4-78.5 + 0.23;
 //return analog_speed_value_bits;
 return MotorVel;
 }
@@ -116,7 +116,7 @@ int motorClass::arduinoWriteSpeed(void){
 
 void motorClass::inputVelocityPidGains(float proportional,float integral,float tau_derivative,float alpha_derivative){
     Kpv = proportional;
-    Kiv = integral;
+    tau_i = integral;
     tau_d = tau_derivative;
     alpha_d = alpha_derivative;
 }
@@ -131,15 +131,15 @@ void motorClass::storeOldVals(void){
 void motorClass::calc_t(){
   currentTime = millis();
   //dt = 0.001*(currentTime - prevTime);
-   dt = 0.0017;
+   dt = 0.002;
 }
 
-float motorClass::motor_velocity_calc(void){
+/*float motorClass::motor_velocity_calc(void){
   calc_t();
   MotorVel = (encodercount-encodercountPrev) * dt;
   storeOldVals();
   return MotorVel; 
-}
+}*/
 
 /*
 float motorClass::closedLoopControllerCurrent(void){
@@ -190,18 +190,19 @@ float motorClass::closedLoopControllerSpeed(void){
 
   errorVel = desiredMotorVel - MotorVel;
   
-  y_I = Kpv*0.5*Kiv*dt*(errorVel+errorVelPrev) + y_I_minus1;
+  y_I = Kpv*0.5*dt*(errorVel+errorVelPrev)/tau_i + y_I_minus1;
   
   if ( y_I > MAX_i ){
-    y_I = 0.02*MAX_i;
+    y_I = MAX_i;
   }
   else if ( y_I < MIN_i ){
-    y_I  = 0.02*MIN_i;
+    y_I  = MIN_i;
   }
   
   e_d = Kpv*errorVel + y_I;
-  y_d = y_d_minus1*(2*(1/alpha_d)*tau_d/dt -1.0) + e_d_minus1*(1.0 - 2*tau_d/dt)+ e_d*(2*tau_d/dt +1.0); //y_d_minus1*(2*tau_d/dt -1.0)
-  currentCommand = y_d;
+  y_d = (1.0/((2.0*alpha_d*tau_d/dt) + 1.0))*(y_d_minus1*((2.0*alpha_d*tau_d/dt) - 1.0) + e_d*((2.0*tau_d/dt) + 1.0) + e_d_minus1*(1.0 -2.0*tau_d/dt));
+   
+  //y_d = y_d_minus1*(2*(1/alpha_d)*tau_d/dt -1.0) + e_d_minus1*(1.0 - 2*tau_d/dt)+ e_d*(2*tau_d/dt +1.0); //y_d_minus1*(2*tau_d/dt -1.0)
 
 
   prevTime = currentTime;
@@ -212,7 +213,8 @@ float motorClass::closedLoopControllerSpeed(void){
   e_d_minus1 = e_d;
   y_d_minus1 = y_d;
   
-  currentCommand = y_I;
+  currentCommand = e_d;
+  //currentCommand = Kpv*errorVel;
   //currentCommand = dt;
   return currentCommand;
 }
@@ -233,6 +235,16 @@ float motorClass::closedLoopControllerInternalRes(void){
 
 void motorClass::setdesiredMotorVel(float desiredVel){
   desiredMotorVel = desiredVel;
+}
+
+
+void motorClass::CLC(void){
+    if ( mode == 0 ){
+   closedLoopControllerSpeed();
+  }
+  else if (mode == 1 ){
+   closedLoopControllerInternalRes();
+  }   
 }
 
 

@@ -1,0 +1,13 @@
+Header header
+float64 boomP
+float64 armP
+float64 bucketP
+float64 swingP
+float64 boomV
+float64 armV
+float64 bucketV
+float64 swingV
+float64 boomI
+float64 armI
+float64 bucketI
+float64 swingI

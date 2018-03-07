@@ -13,7 +13,7 @@ class motorClass
     float Kpv = 0;
     float tau_d = 0;
     float alpha_d = 0;
-    float Kiv = 0;
+    float tau_i = 0;
     
     unsigned long encodercountPrev = 0;
     int encodertickerPrev = 0;
@@ -47,6 +47,8 @@ class motorClass
     float MotorVel;
     float MotorCurrent;
     float currentCommand = 0;
+    float positionCalibration = 0;
+    int mode = 0; // modes: 0-Manual speed reference mode, 1-Internal res mode , 2-Position Control Mode
     
     void inputVelocityPidGains(float proportional,float integral,float tau_derivative,float alpha_derivative);
     void inputPins(int command, int speedd,int current, int enable, int directionn, int encoder);
@@ -59,10 +61,12 @@ class motorClass
     float proportional_control(void);
     float derivative_control(void);
     float integral_control(void);
-    
+
+    void  CLC(void);
     float closedLoopControllerCurrent(void);
     float closedLoopControllerSpeed(void);
     float closedLoopControllerInternalRes(void);
+    
     void setdesiredMotorVel(float desiredVel);
         
     void enableMotor(void);
@@ -82,10 +86,10 @@ class motorClass
 
 };
 //
-const float K_v_PROPORTIONAL = 0.011;
-const float K_v_INTEGRAL     = 50;
-const float ALPHA_d          = 10;
-const float TAU_d            = 0.0007;
+const float K_v_PROPORTIONAL = 0.05;
+const float ALPHA_d          = 0.05;
+const float TAU_d            = 0.01;
+const float TAU_i            = 0.05;
 
 const float ARM_BIAS         = 2.5;
 

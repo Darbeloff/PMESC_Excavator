@@ -14,23 +14,20 @@ class motorClass
     float tau_d = 0;
     float alpha_d = 0;
     float tau_i = 0;
-    
+
+    float Kp_cascade = 0;
+
     unsigned long encodercountPrev = 0;
     int encodertickerPrev = 0;
     
-    float errorVel = 0;
-    float errorVelPrev = 0;
+
     float integratedVelError = 0;
-    float y_I_minus1 = 0;
+    
     float e_d_minus1 = 0;
     float y_d_minus1 = 0;
-    float pCommand = 0;
-    float dCommand = 0;
-    float iCommand = 0;
-    
-    float speedCommand = 0;
-    
-    float desiredMotorVel = 0;
+
+
+
     float avgMotorVel;
     int CommandPin;
     
@@ -43,13 +40,31 @@ class motorClass
   
     unsigned long encodercount = 0;
     int encoderticker = 0;
+    
     float encoderpos = 0;
     float MotorVel;
     float MotorCurrent;
-    float currentCommand = 0;
-    float positionCalibration = 0;
-    int mode = 0; // modes: 0-Manual speed reference mode, 1-Internal res mode , 2-Position Control Mode
+
+    float errorPos = 0;
+    float errorPosPrev = 0;  
     
+    float errorVel = 0;
+    float errorVelPrev = 0;    
+    
+    float e_filt = 0;
+    float e_filt_minus1 = 0;
+    float y_I_minus1 = 0;
+    
+    float speedCommand = 0;
+    float currentCommand = 0;
+    
+    float positionCalibration = 0;
+    float referenceMotorVel = 0;
+    float referencePosition = 0;
+    
+    int mode = 3; // modes: 0-Manual speed reference mode, 1-Internal res mode , 2-Position Control Mode
+    int last_mode = 3;
+    void inputPositionCascadeGain(float proportional);
     void inputVelocityPidGains(float proportional,float integral,float tau_derivative,float alpha_derivative);
     void inputPins(int command, int speedd,int current, int enable, int directionn, int encoder);
     void arduinoPinSetupMotor(void);
@@ -66,8 +81,11 @@ class motorClass
     float closedLoopControllerCurrent(void);
     float closedLoopControllerSpeed(void);
     float closedLoopControllerInternalRes(void);
+    float closedLoopControllerPosition(void);
+    float closedLoopControllerSpeedReference(void);
+
     
-    void setdesiredMotorVel(float desiredVel);
+    //void setReferenceMotorVel(float referenceVel);
         
     void enableMotor(void);
     void disableMotor(void);
@@ -86,18 +104,30 @@ class motorClass
 
 };
 //
-const float K_v_PROPORTIONAL = 0.05;
-const float ALPHA_d          = 0.05;
-const float TAU_d            = 0.01;
-const float TAU_i            = 0.05;
+// V PID gains
+const float K_PROPORTIONAL_boom = 1.8;
+const float K_PROPORTIONAL_arm  = 0.25;
 
-const float ARM_BIAS         = 2.5;
+const float TAU_i_arm            = 0.6;
+const float TAU_i_boom           = 0.2;
 
-const int ENC_THRESH_HIGH    = 15000;
-const int ENC_THRESH_LOW     = 1000;
+const float ALPHA_d_arm          = 0.1;
+const float ALPHA_d_boom         = 0.1;
+
+const float TAU_d_arm            = 0.01;
+const float TAU_d_boom           = 0.01;
+
+//Cascade Gains
+const float K_PROPORTIONAL_CASCADE_boom = .5;
+
+//Internal Resistance Gain
+const float ARM_BIAS         = 3.5;
+
+const int ENC_THRESH_HIGH    = 13000;
+const int ENC_THRESH_LOW     = 2000;
 //Constants
-const int MAX_i = 1.0;
-const int MIN_i = -1.0;
+const int MAX_i = 2.0;
+const int MIN_i = -2.0;
 //Staff constants
 const int   FREQ = 2000;
 const float PERIOD = 0.0005;

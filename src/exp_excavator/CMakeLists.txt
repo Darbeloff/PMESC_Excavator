@@ -50,15 +50,16 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  JointValues.msg
-  JointStatesMachine.msg
-  JointCalibration.msg
-  JointCommand.msg
   PowerMachine.msg
+  PowerBucket.msg
+  JointValues.msg
+  JointCommandDynamixel.msg
+  JointCommandArduino.msg
+  JointCalibration.msg
+  JointStateMachineArduino.msg
   Jacobian.msg
   ForceWorld.msg
-  PowerBucket.msg
-)
+  )
 
 ## Generate services in the 'srv' folder
 # add_service_files(

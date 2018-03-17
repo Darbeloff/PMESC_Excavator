@@ -7,7 +7,7 @@ import rospy
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float32MultiArray
-import exp_excavator.msg.JointValues as JointVals
+import exp_excavator.msg as cmsg
 import numpy as np
 
 class CalibratorWithIMU:
@@ -17,9 +17,6 @@ class CalibratorWithIMU:
         self.rate = 100 #[Hz]
         self.ImuBoom = Imu()
         self.ImuArm  = Imu()
-        self.Pos     = JointVals()
-        self.CalJointMsg = JointVals()
-        
         
         self.P_old = 5
         self.P_new = []
@@ -36,9 +33,9 @@ class CalibratorWithIMU:
         
         self.sub_IMUBoom = rospy.Subscriber('IMUBoom' , Imu       , self.cb_IMUBoom);
         self.sub_IMUArm  = rospy.Subscriber('IMUArm'  , Imu       , self.cb_IMUArm);
-        self.sub_pos     = rospy.Subscriber('JointPos', JointVals , self.cb_pos);
-        self.sub_posDYNA = rospy.Subscriber('JointsDYNA', JointState, self.cb_posDYNA);
-        self.pub_JointCalib = rospy.Publisher('JointCalibration', JointVals, queue_size=10);
+        self.sub_pos_arduino     = rospy.Subscriber('machine_state_arduino', cmsg.JointStateMachineArduino , self.cb_pos_arduino);
+        self.sub_pos_dynamixel   = rospy.Subscriber('joint_states_dynamixel', JointState, self.cb_pos_dynamixel);
+        self.pub_JointCalib = rospy.Publisher('JointCalibration', cmsg.JointCalibration, queue_size=10);
 
 
     
@@ -54,14 +51,14 @@ class CalibratorWithIMU:
         except :
             print("ERRORcalIMU2")          
             
-    def cb_pos(self, msg):
+    def cb_pos_arduino(self, msg):
         try:
-            self.posBoom = msg.boom
-            self.posArm  = msg.arm
+            self.posBoom = -0.02*msg.boomP
+            self.posArm  = -0.02*msg.armP
         except :
             print("ERRORcbpos")  
     
-    def cb_posDYNA(self, msg):
+    def cb_pos_dynamixel(self, msg):
         try:
             self.posBucket = msg.position[0]
             self.velBucket = msg.velocity[0]
@@ -90,14 +87,16 @@ class CalibratorWithIMU:
             r.sleep()
 
 
-        self.CalJointMsg =JointState()
+        self.calibration_msg =cmsg.JointCalibration()
 
-        self.CalJointMsg.boom.append(np.float32(self.alpha))
-        self.CalJointMsg.arm.append(np.float32(self.beta))
-        self.CalJointMsg.bucket.append(np.float32(np.pi))
-        self.CalJointMsg.swing.append(0.0)
-        
-        self.pub_JointCalib.publish(self.CalJointMsg)
+        self.calibration_msg.boom   =  np.float32(self.alpha)
+        self.calibration_msg.arm    =  np.float32(self.beta)
+        self.calibration_msg.bucket =  np.float32(np.pi)
+
+        print(np.float32(self.alpha))#
+        print(np.float32(self.beta)) #
+        print(- np.float32(np.pi))  #
+        self.pub_JointCalib.publish(self.calibration_msg)
 
              
 if __name__ == '__main__':

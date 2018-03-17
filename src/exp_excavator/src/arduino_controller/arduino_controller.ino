@@ -5,7 +5,8 @@
 #include <std_msgs/UInt16.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Float32MultiArray.h>
-#include <exp_excavator/JointStatesMachine.h>
+#include <exp_excavator/JointStateMachineArduino.h>
+#include <exp_excavator/JointCommandArduino.h>
 
 #include <SPI.h>
 
@@ -13,103 +14,157 @@
 unsigned int currentCommandArm;
 unsigned int currentCommandBoom;
 float v_desired;
+float dither = 0;
+float dither_last = 0;
+float pos_initial_arm = 0;
+float arm_power_gradient = 0;
 
 int arduinoPrescalerEraser = 7;
-int arduinoClockPrescaler = 3;     // this could be a number in [1 , 6]. In this case, 3 corresponds in binary to 011.   
+int arduinoClockPrescaler = 3;     // this could be a number in [1 , 6]. In this case, 3 corresponds in binary to 011.
 
 unsigned long i = 0;
 unsigned long time_last = millis();
 unsigned long time_now  = millis();
 
 motorClass motorArm;
+motorClass motorBoom;
 
 ros::NodeHandle  nh;
 
 std_msgs::Float32 hz_loop_msg;
-std_msgs::Float32 vel_actual_msg;
-std_msgs::Float32 cur_actual_msg;
-std_msgs::Float32 enc_actual_msg;
-exp_excavator::JointStatesMachine joint_states_msg;
-
+exp_excavator::JointStateMachineArduino joint_states_msg;
 
 ros::Publisher loop_freq("loop_freq"  ,  &hz_loop_msg);
-ros::Publisher vel_actual("vel_actual",  &vel_actual_msg);
-ros::Publisher cur_actual("cur_actual",  &cur_actual_msg);
-ros::Publisher enc_actual("enc_actual",  &enc_actual_msg);
+ros::Publisher machine_state_arduino("machine_state_arduino",  &joint_states_msg);
 
-void referenceCb(const std_msgs::Empty& msg)
-{ vel_actual_msg.data = motorArm.MotorVel;
-  cur_actual_msg.data = motorArm.currentCommand;
-  enc_actual_msg.data = motorArm.encoderpos;
+void loggingCb(const std_msgs::Empty& msg)
+{ joint_states_msg.armV  = motorArm.MotorVel;
+  joint_states_msg.boomV = motorBoom.MotorVel;
 
-  vel_actual.publish( &vel_actual_msg );
-  cur_actual.publish( &cur_actual_msg );
-  enc_actual.publish( &enc_actual_msg ); 
+  joint_states_msg.armP  = motorArm.encoderpos;
+  joint_states_msg.boomP = motorBoom.encoderpos;
 
-  hz_loop_msg.data = float(i)/(0.001*float(millis()-time_last));
-  i=0;
+  joint_states_msg.armI  = motorArm.MotorCurrent;
+  joint_states_msg.boomI = motorBoom.MotorCurrent;
+
+  joint_states_msg.armMode  = motorArm.mode;
+  joint_states_msg.boomMode = motorBoom.mode;
+
+  hz_loop_msg.data = float(i) / (0.001 * float(millis() - time_last));
+  i = 0;
   time_last = millis();
+
+  machine_state_arduino.publish( &joint_states_msg);
   loop_freq.publish( &hz_loop_msg);
 }
 
+void powergradientCb(const std_msgs::Float32& msg)
+{
+  arm_power_gradient = msg.data;
+}
+
 void calibrationCb(const std_msgs::Float32MultiArray& msg)
-{ 
-  //motorBoom.positionCalibration = msg.data[0];
+{
+  motorBoom.positionCalibration = msg.data[0];
   motorArm.positionCalibration  = msg.data[1];
 }
 
-ros::Subscriber<std_msgs::Empty> reference_sub("reference", &referenceCb);
-ros::Subscriber<std_msgs::Float32MultiArray> calibration_sub("calibration", &calibrationCb);
+void commandCb(const exp_excavator::JointCommandArduino& msg)
+{
+  dither = 0;
+  if ( motorArm.mode == 1 ) {
+  dither = -2 + 2*sin(0.001*millis()*20);
+  //dither = 0;
+  }
+  
+  motorBoom.referenceMotorVel =  msg.boomV + dither ;
+  motorArm.referencePosition  =  msg.armP;
+  
+  motorBoom.mode = msg.BoomMode;
+  motorArm.mode  = msg.ArmMode;
+
+  if(motorArm.last_mode != motorArm.mode){
+    motorArm.y_I_minus1   = 0;
+    motorArm.errorPosPrev = 0;
+    }
+}
+
+ros::Subscriber<std_msgs::Empty> logging_sub("logging_ping", &loggingCb);
+ros::Subscriber<exp_excavator::JointCommandArduino> arduino_command("arduino_commands", &commandCb);
+ros::Subscriber<std_msgs::Float32> power_gradient("power_gradient", &powergradientCb);
 
 void setup()
 {
-    motorArm.inputPins(PWM_COMMAND_PIN_ARM, ANALOG_SPEED_PIN_ARM, ANALOG_CURRENT_PIN_ARM, ENABLE_PIN_ARM, DIRECTION_PIN_ARM,SLAVE_SELECT_ENCODER_PIN_ARM);
-    motorArm.arduinoPinSetupMotor();
-    motorArm.inputVelocityPidGains(K_v_PROPORTIONAL,TAU_i,TAU_d,ALPHA_d);//Set Gains
-    motorArm.initEncoder();
-    
-   
+  motorArm.inputPins(PWM_COMMAND_PIN_ARM,   ANALOG_SPEED_PIN_ARM,  ANALOG_CURRENT_PIN_ARM,  ENABLE_PIN_ARM,  DIRECTION_PIN_ARM,  SLAVE_SELECT_ENCODER_PIN_ARM);
+  motorBoom.inputPins(PWM_COMMAND_PIN_BOOM, ANALOG_SPEED_PIN_BOOM, ANALOG_CURRENT_PIN_BOOM, ENABLE_PIN_BOOM, DIRECTION_PIN_BOOM, SLAVE_SELECT_ENCODER_PIN_BOOM);
+
+  motorArm.arduinoPinSetupMotor();
+  motorBoom.arduinoPinSetupMotor();
+
+  motorArm.inputVelocityPidGains(K_PROPORTIONAL_arm, TAU_i_arm, TAU_d_arm, ALPHA_d_arm); //Set Gains
+  motorBoom.inputVelocityPidGains(K_PROPORTIONAL_boom, TAU_i_boom, TAU_d_boom, ALPHA_d_boom); //Set Gains
+  motorBoom.inputPositionCascadeGain(K_PROPORTIONAL_CASCADE_boom);
+
+  motorArm.initEncoder();
+  motorBoom.initEncoder();
+
+  TCCR2B &= ~arduinoPrescalerEraser;
+  TCCR2B |= arduinoClockPrescaler;  //this operation (OR), replaces the last three bits in TCCR2B with our new value 011
+
+  SPI.begin();
+
+  nh.initNode(); //start ROS node
+
+  nh.advertise(loop_freq);
+  nh.advertise(machine_state_arduino);
+  nh.subscribe(logging_sub);
+  nh.subscribe(arduino_command);
+  //nh.subscribe(power_gradient);
   
-    TCCR2B &= ~arduinoPrescalerEraser;
-    TCCR2B |= arduinoClockPrescaler;  //this operation (OR), replaces the last three bits in TCCR2B with our new value 011
-  
-    SPI.begin();
-    motorArm.readEncoder();
+  delay(1000);
+  motorArm.readEncoder();
+  motorBoom.readEncoder();
 
-    nh.initNode(); //start ROS node
-    nh.advertise(loop_freq);
-    nh.advertise(vel_actual); //advertise topic
-    nh.advertise(cur_actual); 
-    nh.advertise(enc_actual);
-    nh.subscribe(reference_sub);
+  motorArm.referencePosition  = motorArm.encoderpos;
+  motorBoom.referencePosition = motorBoom.encoderpos;
+  pos_initial_arm = motorArm.referencePosition;
 
-    motorArm.enableMotor();
+  //motorArm.enableMotor();
+  //motorBoom.enableMotor();
 
-    motorArm.calc_t();
-    
 }
 
 void loop()
-{ 
-  motorArm.storeOldVals();
+{
+  //motorArm.storeOldVals();
+  //v_desired = 50 * sign(sin(0.005 * millis()));
+
+  //motorArm.referencePosition = 10 * (sin(0.0025 * millis()));
+
+
 
   motorArm.readEncoder();
-  motorArm.arduinoReadValuesSpeed();
-  motorArm.arduinoReadValuesCurrent();
+  motorBoom.readEncoder();
 
-  v_desired = 50*(sin(0.0005*millis()));
-  motorArm.setdesiredMotorVel(v_desired);
-  
-  //motorArm.closedLoopControllerInternalRes();
+  motorArm.arduinoReadValuesSpeed();
+  motorBoom.arduinoReadValuesSpeed();
+
+  motorArm.arduinoReadValuesCurrent();
+  motorBoom.arduinoReadValuesCurrent();
+
   motorArm.CLC();
+  motorBoom.CLC();
+
   motorArm.arduinoWriteCurrent();
+  //motorBoom.arduinoWriteCurrent();
+  motorBoom.arduinoWriteSpeed();
 
   i++;
   nh.spinOnce();
   delay(1);
 }
 
-float sign(float value){
-  return float((value>0)-(value<0));
+float sign(float value) {
+  return float((value > 0) - (value < 0));
 }
 

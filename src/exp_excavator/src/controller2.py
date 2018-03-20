@@ -28,12 +28,14 @@ class SpeedCommanderTeleop:
         self.boom_mode = 3 
         self.arm_mode  = 3
 
-        self.buffer_length = 100
+        self.buffer_length = 50
 
         self.power_buffer = np.zeros(self.buffer_length)
         self.regressor_buffer = np.zeros(self.buffer_length)
         self.power_gradient = 0 
-
+        self.power_gradient_last = 0;
+        self.velocity_adaptation_last = 0;
+        self.velocity_adaptation= 0;
 
         self.time_switch_last = rospy.get_rostime()
 
@@ -108,8 +110,11 @@ class SpeedCommanderTeleop:
 
         A = np.vstack([regressor_mc,np.ones(self.buffer_length)]).T
         self.power_gradient , offset = np.linalg.lstsq(A,power_mc)[0]
-        
-        self.pub_gradient.publish(self.power_gradient)
+        self.velocity_adaptation  = 0.02*(self.power_gradient+self.power_gradient_last)+ self.velocity_adaptation_last    
+
+        self.pub_gradient.publish( self.velocity_adaptation)
+        self.velocity_adaptation_last = self.velocity_adaptation
+        self.power_gradient_last      =  self.power_gradient
 
     def update(self):
         r = rospy.Rate(self.rate)
@@ -119,10 +124,11 @@ class SpeedCommanderTeleop:
             arduino_controller_msg   = cmsg.JointCommandArduino()
             dynamixel_controller_msg = cmsg.JointCommandDynamixel()
 
-            self.extremum_update()
+            
 
             if self.arm_mode == 1:
-                arduino_controller_msg.boomV   = self.joy_val.boom*100.0  + 3.0*self.power_gradient
+                self.extremum_update()
+                arduino_controller_msg.boomV   = self.joy_val.boom*100.0  +0.0*self.power_gradient + 0.0*self.velocity_adaptation
             else:
                 arduino_controller_msg.boomV   = self.joy_val.boom*100.0
             

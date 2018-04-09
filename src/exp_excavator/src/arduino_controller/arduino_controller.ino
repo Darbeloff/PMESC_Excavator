@@ -45,7 +45,7 @@ void loggingCb(const std_msgs::Empty& msg)
   joint_states_msg.boomP = motorBoom.encoderpos;
 
   joint_states_msg.armI  = motorArm.MotorCurrent;
-  joint_states_msg.boomI = motorBoom.MotorCurrent;
+  joint_states_msg.boomI = dither+2;
 
   joint_states_msg.armMode  = motorArm.mode;
   joint_states_msg.boomMode = motorBoom.mode;

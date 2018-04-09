@@ -2,8 +2,8 @@
 
 <launch>
 
-<!-- Rosbag recording-->
-  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_1/gain0_wd25_Ad1_b2 "/>
+<!-- Rosbag recording 
+  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_1/data_set_2/Igain0_1"/>-->
  
 
 <!--ROSSERIAL node -->
@@ -80,6 +80,9 @@
 
 <!-- Force Sensor -->
   <include file="$(find optoforce)/launch/optoforce.launch"/> 
+
+<!-- Realsense Camera -->
+  <include file="$(find realsense_camera)/launch/sr300_nodelet_default.launch" />
 
 </launch>
 

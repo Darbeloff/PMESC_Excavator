@@ -128,7 +128,7 @@ class SpeedCommanderTeleop:
 
             if self.arm_mode == 1:
                 self.extremum_update()
-                arduino_controller_msg.boomV   = self.joy_val.boom*100.0  +0.0*self.power_gradient + 0.0*self.velocity_adaptation
+                arduino_controller_msg.boomV   = self.joy_val.boom*100.0  +0.0*self.power_gradient + 0.1*self.velocity_adaptation
             else:
                 arduino_controller_msg.boomV   = self.joy_val.boom*100.0
             

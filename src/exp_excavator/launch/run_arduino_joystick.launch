@@ -2,8 +2,8 @@
 
 <launch>
 
-<!-- Rosbag recording 
-  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_1/data_set_2/Igain0_1"/>-->
+<!-- Rosbag recording -->
+  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_1/PI_gain"/>
  
 
 <!--ROSSERIAL node -->
@@ -13,7 +13,8 @@
   </node>
 
   <node pkg="rostopic" type="rostopic" name="logging_ping" args="pub /logging_ping std_msgs/Empty -r 100" output="screen"/>
-
+<!--rostopic echo -b Igain0_0_2018-03-21-16-49-31.bag -p /machine_state_arduino > Igain0.txt
+ -->
 
 <!-- JOYSTICK nodes -->
   <node respawn="true" pkg="joy"
@@ -81,8 +82,8 @@
 <!-- Force Sensor -->
   <include file="$(find optoforce)/launch/optoforce.launch"/> 
 
-<!-- Realsense Camera -->
-  <include file="$(find realsense_camera)/launch/sr300_nodelet_default.launch" />
+<!-- Realsense Camera 
+  <include file="$(find realsense_camera)/launch/sr300_nodelet_default.launch" />-->
 
 </launch>
 

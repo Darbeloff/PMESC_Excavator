@@ -218,6 +218,40 @@ float motorClass::closedLoopControllerPosition(void){
   return currentCommand;
 }
 
+float motorClass::closedLoopControllerSpeed(void){
+
+  float y_I;
+  float e_d;
+  float y_d;
+  float term_test;
+  calc_t();
+
+  errorVel = referenceMotorVel - MotorVel;
+
+  y_I = Kpv*0.5*dt*(errorVel + errorVelPrev)/tau_i + y_I_minus1;
+  
+  if ( y_I > MAX_i ){
+    y_I = MAX_i;
+  }
+  else if ( y_I < MIN_i ){
+    y_I  = MIN_i;
+  }
+  
+  e_d = Kpv*errorVel + y_I;
+
+
+  prevTime = currentTime;
+  errorVelPrev = errorVel;
+ 
+  y_I_minus1 = y_I;
+  e_d_minus1 = e_d;
+  y_d_minus1 = y_d;
+    
+  currentCommand = constrain(e_d,-9.95,9.95);
+
+  return currentCommand;
+}
+
 float motorClass::closedLoopControllerSpeedReference(void){
   calc_t();
   speedCommand = referenceMotorVel;

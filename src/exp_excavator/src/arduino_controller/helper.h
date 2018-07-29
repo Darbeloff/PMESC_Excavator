@@ -82,6 +82,7 @@ class motorClass
     float closedLoopControllerSpeed(void);
     float closedLoopControllerInternalRes(void);
     float closedLoopControllerPosition(void);
+    float closedLoopControllerPositionCascade(void);
     float closedLoopControllerSpeedReference(void);
 
     
@@ -121,7 +122,7 @@ const float TAU_d_boom           = 0.01;
 const float K_PROPORTIONAL_CASCADE_boom = .5;
 
 //Internal Resistance Gain
-const float ARM_BIAS         = 3.5;
+const float ARM_BIAS         = 5.0;
 
 const int ENC_THRESH_HIGH    = 13000;
 const int ENC_THRESH_LOW     = 2000;

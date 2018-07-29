@@ -11,6 +11,7 @@ import sensor_msgs.msg as smsg
 import math
 import numpy as np
 from std_msgs.msg import Float32
+
 class SpeedCommanderTeleop:
     def __init__(self):
         rospy.init_node('controller', anonymous=True)
@@ -75,7 +76,8 @@ class SpeedCommanderTeleop:
         
         self.regressor_buffer = np.roll(self.regressor_buffer,1)
         self.regressor_buffer[0] = self.boom_motor_velocity
-                   
+
+                  
     def cb_joy_right(self, joy):
         self.joy_switch_servo = joy.buttons[1]
         self.joy_switch_impedance = joy.buttons[2]
@@ -135,9 +137,6 @@ class SpeedCommanderTeleop:
         self.pub_power.publish(self.power_buffer[0])
         self.velocity_adaptation_last = self.velocity_adaptation
         self.power_gradient_last      =  self.power_gradient
-
-    def trajectory(self):
-
 
     def update(self):
         r = rospy.Rate(self.rate)

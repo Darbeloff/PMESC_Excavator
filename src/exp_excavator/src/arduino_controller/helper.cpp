@@ -259,17 +259,32 @@ float motorClass::closedLoopControllerSpeedReference(void){
 }
 
 
+float motorClass::closedLoopControllerPositionCascade(void){
+
+  float y_I;
+  float e_d;
+  float y_d;
+  float term_test;
+ 
+  errorPos = referencePosition - encoderpos;
+  
+  speedCommand = constrain(Kp_cascade*errorPos ,-1.0,1.0);
+
+  return speedCommand;
+}
+
 float motorClass::closedLoopControllerInternalRes(void){
-    float R  =  ARM_BIAS/50.0;
+    float R  =  0.05*ARM_BIAS; // /50
     
    currentCommand = ARM_BIAS - MotorVel*R;
    //currentCommand = 3;
-  if ( MotorVel > ARM_BIAS/R  ){
-   currentCommand = 0;
-  }
-  else if (MotorVel < 0){
-    currentCommand = ARM_BIAS;
-  }    
+  //if ( MotorVel > ARM_BIAS/R  ){
+   //currentCommand = 0;
+  //}
+  //else if (MotorVel < 0){
+    //currentCommand = ARM_BIAS;
+  //} 
+  currentCommand = constrain(currentCommand, 0.1 , ARM_BIAS);   
     return currentCommand; 
 }
 

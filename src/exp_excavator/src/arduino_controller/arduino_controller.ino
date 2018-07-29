@@ -45,7 +45,7 @@ void loggingCb(const std_msgs::Empty& msg)
   joint_states_msg.boomP = motorBoom.encoderpos;
 
   joint_states_msg.armI  = motorArm.MotorCurrent;
-  joint_states_msg.boomI = dither+2;
+  joint_states_msg.boomI = motorBoom.MotorCurrent;
 
   joint_states_msg.armMode  = motorArm.mode;
   joint_states_msg.boomMode = motorBoom.mode;
@@ -73,10 +73,11 @@ void commandCb(const exp_excavator::JointCommandArduino& msg)
 {
   dither = 0;
   if ( motorArm.mode == 1 ) {
-  dither = -2 + 1*sin(0.001*millis()*25);
+  dither = -1 + 0.5*sin(0.001*millis()*25);
   //dither = 0;
   }
   
+  motorBoom.referencePosition =  msg.armP ;
   motorBoom.referenceMotorVel =  msg.boomV + dither ;
   motorArm.referencePosition  =  msg.armP;
   

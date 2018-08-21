@@ -77,7 +77,7 @@ class CalibratorWithIMU:
 
         
     def Calibrate_update(self):
-        rospy.sleep(3.0)
+        rospy.sleep(4.0)
         r = rospy.Rate(self.rate)
         start_time = rospy.Time.now()
         d = rospy.Duration.from_sec(4)       

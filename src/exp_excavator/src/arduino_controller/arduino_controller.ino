@@ -73,7 +73,7 @@ void commandCb(const exp_excavator::JointCommandArduino& msg)
 {
   dither = 0;
   if ( motorArm.mode == 1 ) {
-  dither = -1 + 0.5*sin(0.001*millis()*25);
+  dither = -0.1 + 1.5*sin(0.001*millis()*25);
   //dither = 0;
   }
   

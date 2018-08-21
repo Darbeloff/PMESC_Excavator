@@ -39,6 +39,8 @@ class SpeedCommanderTeleop:
         self.boom_mode = 3 
         self.arm_mode  = 3
         
+        self.current_setpoint = 2.5
+
         self.trajectory_stage = 0 
 
         self.boom_calibration    = 0 
@@ -50,8 +52,8 @@ class SpeedCommanderTeleop:
 
         self.power_buffer = np.zeros(self.buffer_length)
         self.regressor_buffer = np.zeros(self.buffer_length)
-        self.power_gradient = 0 
-        self.power_gradient_last = 0;
+        self.current_error = 0 
+        self.current_error_last = 0;
         self.velocity_adaptation_last = 0;
         self.velocity_adaptation= 0;
 
@@ -151,8 +153,8 @@ class SpeedCommanderTeleop:
 
         if self.joy_switch_impedance == 1 and rospy.get_rostime()-self.time_switch_last>rospy.Duration(0, 100000000):
             print('switch to POWER MAXIMIZING')
-            self.power_gradient = 0 
-            self.power_gradient_last = 0;
+            self.current_error = 0 
+            self.current_error_last = 0;
             self.velocity_adaptation_last = 0;
             self.velocity_adaptation= 0;
             
@@ -187,17 +189,15 @@ class SpeedCommanderTeleop:
     
             
     def extremum_update(self):
-        power_mc     = self.power_buffer     - np.mean(self.power_buffer)
-        regressor_mc = self.regressor_buffer - np.mean(self.regressor_buffer)
+        
+        self.current_error =  self.current_setpoint - self.arm_motor_current
 
-        A = np.vstack([regressor_mc,np.ones(self.buffer_length)]).T
-        self.power_gradient , offset = np.linalg.lstsq(A,power_mc)[0]
-        self.velocity_adaptation  = 0.02*(self.power_gradient+self.power_gradient_last)+ self.velocity_adaptation_last    
+        self.velocity_adaptation  = 0.02*(self.current_error +self.current_error_last) + self.velocity_adaptation_last    
 
         #self.pub_gradient.publish( self.velocity_adaptation)
         self.pub_power.publish(self.power_buffer[0])
         self.velocity_adaptation_last = self.velocity_adaptation
-        self.power_gradient_last      =  self.power_gradient
+        self.current_error_last      =  self.current_error
 
     def update(self):
         r = rospy.Rate(self.rate)
@@ -239,7 +239,8 @@ class SpeedCommanderTeleop:
             elif self.robot_mode == 2:
                 #set boom
                 self.extremum_update()
-                arduino_controller_msg.boomV   = 4.0*(self.power_gradient + 0.2*self.velocity_adaptation) #  + self.joy_val.boom*100.0  
+                boom_cmd_unclipped = 0.2*(self.velocity_adaptation + self.current_error)
+                arduino_controller_msg.boomV   = np.clip(boom_cmd_unclipped,-15.0,15.0)
                 
                 #set arm
                 #simulated dynamics set in microcontroller

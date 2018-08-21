@@ -3,7 +3,7 @@
 <launch>
 
 <!-- Rosbag recording -->
-  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_2/DrySand_Imp05_"/>
+  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_7/Gain_4_"/>
  
 
 <!--ROSSERIAL node -->

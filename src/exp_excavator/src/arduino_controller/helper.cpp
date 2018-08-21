@@ -277,6 +277,9 @@ float motorClass::closedLoopControllerInternalRes(void){
     float R  =  0.05*ARM_BIAS; // /50
     
    currentCommand = ARM_BIAS - MotorVel*R;
+   //currentCommand = ARM_BIAS - (sq(MotorVel*R))/ARM_BIAS;
+   //currentCommand = ARM_BIAS - (pow(MotorVel*R,3))/(sq(ARM_BIAS));
+
    //currentCommand = 3;
   //if ( MotorVel > ARM_BIAS/R  ){
    //currentCommand = 0;

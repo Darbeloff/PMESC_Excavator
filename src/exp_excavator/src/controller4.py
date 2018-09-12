@@ -239,7 +239,7 @@ class SpeedCommanderTeleop:
             elif self.robot_mode == 2:
                 #set boom
                 self.extremum_update()
-                arduino_controller_msg.boomV   = 4.0*(self.power_gradient + 0.2*self.velocity_adaptation) #  + self.joy_val.boom*100.0  
+                arduino_controller_msg.boomV   = 2.0*(self.power_gradient + 0.7*self.velocity_adaptation) #  + self.joy_val.boom*100.0  
                 
                 #set arm
                 #simulated dynamics set in microcontroller

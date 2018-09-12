@@ -33,14 +33,14 @@ class SpeedCommanderTeleop:
 
         self.boom_motor_velocity_ref = 0.0
         self.arm_motor_velocity_ref = 0.0
+        
+        self.ff = 0.97
 
         self.robot_mode = 0 
 
         self.boom_mode = 3 
         self.arm_mode  = 3
         
-        self.current_setpoint = 2.5
-
         self.trajectory_stage = 0 
 
         self.boom_calibration    = 0 
@@ -52,11 +52,15 @@ class SpeedCommanderTeleop:
 
         self.power_buffer = np.zeros(self.buffer_length)
         self.regressor_buffer = np.zeros(self.buffer_length)
-        self.current_error = 0 
-        self.current_error_last = 0;
+        self.power_gradient = 0 
+        self.power_gradient_last = 0;
         self.velocity_adaptation_last = 0;
         self.velocity_adaptation= 0;
 
+        self.RLS_cov_last = np.matrix(np.identity(2))
+        self.RLS_estimate_last = np.transpose(np.matrix([0,0]))
+        print(self.RLS_estimate_last)        
+        
         self.time_switch_last = rospy.get_rostime()
         self.time_switch_last_trajectory = rospy.get_rostime()
 
@@ -80,8 +84,10 @@ class SpeedCommanderTeleop:
 
         self.pub_dynamixel = rospy.Publisher('dynamixel_commands', cmsg.JointCommandDynamixel,
                                            queue_size=10)
-        self.pub_gradient      = rospy.Publisher('power_gradient', Float32, queue_size=10)
-
+        
+        self.pub_BATCH      = rospy.Publisher('power_gradient_batch', Float32, queue_size=10)
+        self.pub_RLS        = rospy.Publisher('power_gradient_rls', Float32, queue_size=10)
+        
         self.pub_power     = rospy.Publisher('power', Float32, queue_size=10)
 
     def cb_joy(self, msg):
@@ -153,8 +159,8 @@ class SpeedCommanderTeleop:
 
         if self.joy_switch_impedance == 1 and rospy.get_rostime()-self.time_switch_last>rospy.Duration(0, 100000000):
             print('switch to POWER MAXIMIZING')
-            self.current_error = 0 
-            self.current_error_last = 0;
+            self.power_gradient = 0 
+            self.power_gradient_last = 0;
             self.velocity_adaptation_last = 0;
             self.velocity_adaptation= 0;
             
@@ -189,15 +195,34 @@ class SpeedCommanderTeleop:
     
             
     def extremum_update(self):
-        
-        self.current_error =  self.current_setpoint - self.arm_motor_current
+        power_mc     = self.power_buffer     - np.mean(self.power_buffer)
+        regressor_mc = self.regressor_buffer - np.mean(self.regressor_buffer)
 
-        self.velocity_adaptation  = 0.02*(self.current_error +self.current_error_last) + self.velocity_adaptation_last    
+        phi = np.transpose(np.matrix([regressor_mc[0],1])) 
+
+        self.RLS_estimate = self.RLS_estimate_last + (np.matrix(self.RLS_cov_last)*phi)*(power_mc[0] - np.transpose(phi)*self.RLS_estimate_last )/(self.ff + np.transpose(phi)*self.RLS_cov_last*phi)   
+        self.RLS_cov      = (self.RLS_cov_last - (self.RLS_cov_last*phi*np.transpose(phi)*self.RLS_cov_last)/(self.ff + np.transpose(phi)*self.RLS_cov_last*phi))/self.ff
+        self.power_gradient = np.clip(self.RLS_estimate[0],-1,1)        
+        self.velocity_adaptation  = 0.02*(self.power_gradient+self.power_gradient_last)+ self.velocity_adaptation_last    
+
+#        A = np.vstack([regressor_mc,np.ones(self.buffer_length)]).T
+#        self.power_gradient , offset = np.linalg.lstsq(A,power_mc)[0]
+#        self.velocity_adaptation  = 0.02*(self.power_gradient+self.power_gradient_last)+ self.velocity_adaptation_last    
+
+        #if self.RLS_cov[0,0]<0.001 or self.RLS_cov[1,1]<0.001:
+        #   self.RLS_cov_last = np.identity(2)
+
 
         #self.pub_gradient.publish( self.velocity_adaptation)
         self.pub_power.publish(self.power_buffer[0])
         self.velocity_adaptation_last = self.velocity_adaptation
-        self.current_error_last      =  self.current_error
+        self.power_gradient_last      =  self.power_gradient
+        
+        self.pub_BATCH.publish(self.power_gradient)
+        self.pub_RLS.publish(self.RLS_estimate[0])
+
+        self.RLS_estimate_last   = self.RLS_estimate
+        self.RLS_cov_last = self.RLS_cov
 
     def update(self):
         r = rospy.Rate(self.rate)
@@ -239,8 +264,7 @@ class SpeedCommanderTeleop:
             elif self.robot_mode == 2:
                 #set boom
                 self.extremum_update()
-                boom_cmd_unclipped = 0.5*(self.velocity_adaptation + self.current_error)
-                arduino_controller_msg.boomV   = np.clip(boom_cmd_unclipped,-15.0,15.0)
+                arduino_controller_msg.boomV   = 5.0*(self.power_gradient + 0.2*self.velocity_adaptation) #  + self.joy_val.boom*100.0  
                 
                 #set arm
                 #simulated dynamics set in microcontroller

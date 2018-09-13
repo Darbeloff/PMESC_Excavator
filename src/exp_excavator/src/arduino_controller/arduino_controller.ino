@@ -58,11 +58,6 @@ void loggingCb(const std_msgs::Empty& msg)
   loop_freq.publish( &hz_loop_msg);
 }
 
-void powergradientCb(const std_msgs::Float32& msg)
-{
-  arm_power_gradient = msg.data;
-}
-
 void calibrationCb(const std_msgs::Float32MultiArray& msg)
 {
   motorBoom.positionCalibration = msg.data[0];
@@ -71,28 +66,16 @@ void calibrationCb(const std_msgs::Float32MultiArray& msg)
 
 void commandCb(const exp_excavator::JointCommandArduino& msg)
 {
-  dither = 0;
-  if ( motorArm.mode == 1 ) {
-  dither = -0.1 + 1.5*sin(0.001*millis()*25);
-  //dither = 0;
-  }
-  
-  motorBoom.referencePosition =  msg.armP ;
-  motorBoom.referenceMotorVel =  msg.boomV + dither ;
-  motorArm.referencePosition  =  msg.armP;
+  motorBoom.referenceMotorVel =  msg.boomV;
+  motorArm.referenceMotorVel  =  msg.armV;
   
   motorBoom.mode = msg.BoomMode;
   motorArm.mode  = msg.ArmMode;
 
-  if(motorArm.last_mode != motorArm.mode){
-    motorArm.y_I_minus1   = 0;
-    motorArm.errorPosPrev = 0;
-    }
 }
 
 ros::Subscriber<std_msgs::Empty> logging_sub("logging_ping", &loggingCb);
 ros::Subscriber<exp_excavator::JointCommandArduino> arduino_command("arduino_commands", &commandCb);
-ros::Subscriber<std_msgs::Float32> power_gradient("power_gradient", &powergradientCb);
 
 void setup()
 {
@@ -137,13 +120,6 @@ void setup()
 
 void loop()
 {
-  //motorArm.storeOldVals();
-  //v_desired = 50 * sign(sin(0.005 * millis()));
-
-  //motorArm.referencePosition = 10 * (sin(0.0025 * millis()));
-
-
-
   motorArm.readEncoder();
   motorBoom.readEncoder();
 
@@ -156,8 +132,7 @@ void loop()
   motorArm.CLC();
   motorBoom.CLC();
 
-  motorArm.arduinoWriteCurrent();
-  //motorBoom.arduinoWriteCurrent();
+  motorArm.arduinoWriteSpeed();
   motorBoom.arduinoWriteSpeed();
 
   i++;

@@ -34,7 +34,7 @@
 
 
 <!-- speed commander node -->
-  <node pkg="exp_excavator" type="controller6.py"
+  <node pkg="exp_excavator" type="controller4.py"
         name="Control_Node" output="screen" />
 
 

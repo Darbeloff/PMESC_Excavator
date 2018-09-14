@@ -68,6 +68,10 @@ void commandCb(const exp_excavator::JointCommandArduino& msg)
 {
   motorBoom.referenceMotorVel =  msg.boomV;
   motorArm.referenceMotorVel  =  msg.armV;
+
+  motorBoom.referencePosition = msg.boomP;
+  motorArm.referencePosition = msg.armP;
+
   
   motorBoom.mode = msg.BoomMode;
   motorArm.mode  = msg.ArmMode;
@@ -79,6 +83,7 @@ ros::Subscriber<exp_excavator::JointCommandArduino> arduino_command("arduino_com
 
 void setup()
 {
+ 
   motorArm.inputPins(PWM_COMMAND_PIN_ARM,   ANALOG_SPEED_PIN_ARM,  ANALOG_CURRENT_PIN_ARM,  ENABLE_PIN_ARM,  DIRECTION_PIN_ARM,  SLAVE_SELECT_ENCODER_PIN_ARM);
   motorBoom.inputPins(PWM_COMMAND_PIN_BOOM, ANALOG_SPEED_PIN_BOOM, ANALOG_CURRENT_PIN_BOOM, ENABLE_PIN_BOOM, DIRECTION_PIN_BOOM, SLAVE_SELECT_ENCODER_PIN_BOOM);
 
@@ -87,7 +92,9 @@ void setup()
 
   motorArm.inputVelocityPidGains(K_PROPORTIONAL_arm, TAU_i_arm, TAU_d_arm, ALPHA_d_arm); //Set Gains
   motorBoom.inputVelocityPidGains(K_PROPORTIONAL_boom, TAU_i_boom, TAU_d_boom, ALPHA_d_boom); //Set Gains
+  motorArm.inputPositionCascadeGain(K_PROPORTIONAL_CASCADE_arm);
   motorBoom.inputPositionCascadeGain(K_PROPORTIONAL_CASCADE_boom);
+  
 
   motorArm.initEncoder();
   motorBoom.initEncoder();

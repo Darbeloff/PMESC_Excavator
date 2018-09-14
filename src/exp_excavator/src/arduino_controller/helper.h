@@ -119,7 +119,8 @@ const float TAU_d_arm            = 0.01;
 const float TAU_d_boom           = 0.01;
 
 //Cascade Gains
-const float K_PROPORTIONAL_CASCADE_boom = .5;
+const float K_PROPORTIONAL_CASCADE_arm = 5;
+const float K_PROPORTIONAL_CASCADE_boom = 5;
 
 //Internal Resistance Gain
 const float ARM_BIAS         = 5.0;

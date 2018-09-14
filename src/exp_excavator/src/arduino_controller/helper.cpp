@@ -261,14 +261,13 @@ float motorClass::closedLoopControllerSpeedReference(void){
 
 float motorClass::closedLoopControllerPositionCascade(void){
 
-  float y_I;
+  /*float y_I;
   float e_d;
   float y_d;
-  float term_test;
+  float term_test;*/
  
   errorPos = referencePosition - encoderpos;
-  
-  speedCommand = constrain(Kp_cascade*errorPos ,-1.0,1.0);
+  speedCommand = constrain(Kp_cascade*errorPos,-20,20);
 
   return speedCommand;
 }
@@ -294,7 +293,7 @@ float motorClass::closedLoopControllerInternalRes(void){
 void motorClass::CLC(void){
     if ( mode == 0 ){
    enableMotor();
-   closedLoopControllerPosition();
+   closedLoopControllerPositionCascade();
   }
   
   else if (mode == 1 ){

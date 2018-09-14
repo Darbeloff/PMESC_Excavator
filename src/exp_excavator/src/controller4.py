@@ -114,7 +114,9 @@ class SpeedCommanderTeleop:
             print('switch to MANUAL')
             
             self.robot_mode = 1
-            self.boom_mode = 2 
+            self.arm_motor_position_ref = self.arm_motor_position
+            self.boom_motor_position_ref = self.boom_motor_position
+            self.boom_mode = 2
             self.arm_mode  = 2
 
             self.enabled = True
@@ -134,12 +136,17 @@ class SpeedCommanderTeleop:
 
             if self.robot_mode == 1:
                 #set boom
+                self.boom_motor_position_ref = self.boom_motor_position_ref + 0.2*self.joy_val.boom
+                arduino_controller_msg.boomP = self.boom_motor_position_ref
                 arduino_controller_msg.boomV   = self.joy_val.boom*20.0
                 
                 #set arm
-                arduino_controller_msg.armV    = self.joy_val.arm*(-20.0)
+                self.arm_motor_position_ref = self.arm_motor_position_ref + 0.2*self.joy_val.arm
+                arduino_controller_msg.armP = self.arm_motor_position_ref
+                arduino_controller_msg.armV    = self.joy_val.arm*(20.0)
 
                 #set bucket 
+
                 dynamixel_controller_msg.bucketV    = self.joy_val.bucket*1.0
 
  

@@ -38,11 +38,13 @@ class SpeedCommanderTeleop:
 
         self.boom_mode = 3 
         self.arm_mode  = 3
-        
+       
         self.boom_calibration    = 0 
         self.arm_calibration     = 0
         self.bucket_calibration  = 0
-        
+
+        self.boom_motor_position = 0
+        self.arm_motor_position = 0
 
         self.time_switch_last = rospy.get_rostime()
         self.time_switch_last_trajectory = rospy.get_rostime()
@@ -91,10 +93,10 @@ class SpeedCommanderTeleop:
 
     def cb_joint_calibration(self, msg):
 
-        self.boom_calibration    = msg.boom 
+        self.boom_calibration    = msg.boom
         self.arm_calibration     = msg.arm
         self.bucket_calibration  = msg.bucket
-                   
+                  
     def cb_joy_right(self, joy):
         self.joy_switch_stop       = joy.buttons[0]
         self.joy_switch_servo      = joy.buttons[1]
@@ -134,22 +136,21 @@ class SpeedCommanderTeleop:
             arduino_controller_msg.BoomMode = self.boom_mode
             arduino_controller_msg.ArmMode =  self.arm_mode
 
+           
             if self.robot_mode == 1:
                 #set boom
                 self.boom_motor_position_ref = self.boom_motor_position_ref + 0.2*self.joy_val.boom
                 arduino_controller_msg.boomP = self.boom_motor_position_ref
-                
                 arduino_controller_msg.boomV   = self.joy_val.boom*20.0
                 
                 #set arm
                 self.arm_motor_position_ref = self.arm_motor_position_ref + 0.2*self.joy_val.arm
                 arduino_controller_msg.armP = self.arm_motor_position_ref
                 arduino_controller_msg.armV    = self.joy_val.arm*(20.0)
+                
                 #set bucket 
-
                 dynamixel_controller_msg.bucketV    = self.joy_val.bucket*1.0
 
- 
             self.pub_arduino.publish(arduino_controller_msg)
             self.pub_dynamixel.publish(dynamixel_controller_msg)
             r.sleep()

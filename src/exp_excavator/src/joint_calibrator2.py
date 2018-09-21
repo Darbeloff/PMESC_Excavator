@@ -20,6 +20,8 @@ class CalibratorWithIMU:
         
         self.P_old = 5
         self.P_new = []
+
+        self.N = 0
         
         self.posBoom   = []
         self.posArm    = []
@@ -67,13 +69,22 @@ class CalibratorWithIMU:
 
     def flow_update(self):
 
-        gamma = np.arctan2(-self.ImuBoom.linear_acceleration.z,self.ImuBoom.linear_acceleration.y)
-        delta = np.arctan2(-self.ImuArm.linear_acceleration.z,self.ImuArm.linear_acceleration.y)
-               
-        self.alpha = np.float64(self.alpha)  +  np.divide(np.float64(self.P_old),(1+np.float64(self.P_old)))*(-(np.float64(gamma)+np.float64(self.posBoom)+np.pi/2) -self.alpha)
-        self.beta =  np.float64(self.beta)   +  np.divide(np.float64(self.P_old),(1+np.float64(self.P_old)))*(np.float64(gamma)-np.float64(delta)-np.float64(self.posArm) -self.beta)
-        self.P_new  = np.float64(self.P_old) -  np.divide(np.float64(self.P_old)*np.float64(self.P_old),1+np.float64(self.P_old))
-        self.P_old = np.array(self.P_new)
+        #gamma = np.arctan2(-self.ImuBoom.linear_acceleration.z,self.ImuBoom.linear_acceleration.y)
+        #delta = np.arctan2(-self.ImuArm.linear_acceleration.z,self.ImuArm.linear_acceleration.y)
+
+        gamma = np.arctan2(self.ImuBoom.linear_acceleration.y,self.ImuBoom.linear_acceleration.z)
+        delta = np.arctan2(self.ImuArm.linear_acceleration.y,self.ImuArm.linear_acceleration.z)
+
+        
+
+        #self.alpha = np.float64(self.alpha)  +  np.divide(np.float64(self.P_old),(1+np.float64(self.P_old)))*(-(np.float64(gamma)+np.float64(self.posBoom)+np.pi/2) -self.alpha)
+        #self.beta =  np.float64(self.beta)   +  np.divide(np.float64(self.P_old),(1+np.float64(self.P_old)))*(np.float64(gamma)-np.float64(delta)-np.float64(self.posArm) -self.beta)
+        #self.P_new  = np.float64(self.P_old) -  np.divide(np.float64(self.P_old)*np.float64(self.P_old),1+np.float64(self.P_old))
+        #self.P_old = np.array(self.P_new)
+
+        self.alpha = np.divide(np.float64(self.alpha*self.N) + np.float64(gamma) - np.float64(self.posBoom/50.0), np.float64(self.N + 1))
+        self.beta =  np.divide(np.float64(self.beta*self.N) + (np.float64(delta - gamma)) - np.float64(self.posArm/50.0), np.float64(self.N + 1))  
+        self.N += 1
 
         
     def Calibrate_update(self):
@@ -89,12 +100,12 @@ class CalibratorWithIMU:
 
         self.calibration_msg =cmsg.JointCalibration()
 
-        self.calibration_msg.boom   =  np.float32(self.alpha)
-        self.calibration_msg.arm    =  np.float32(self.beta)
+        self.calibration_msg.boom   =  np.float32(50.0*self.alpha)
+        self.calibration_msg.arm    =  np.float32(50.0*self.beta)
         self.calibration_msg.bucket =  np.float32(np.pi)
 
-        print(np.float32(self.alpha))#
-        print(np.float32(self.beta)) #
+        print(np.float32(50.0*self.alpha))#
+        print(np.float32(50.0*self.beta)) #
         print(- np.float32(np.pi))  #
         self.pub_JointCalib.publish(self.calibration_msg)
 

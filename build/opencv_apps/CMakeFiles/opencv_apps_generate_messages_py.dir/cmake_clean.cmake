@@ -1,0 +1,40 @@
+FILE(REMOVE_RECURSE
+  "CMakeFiles/opencv_apps_generate_messages_py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRect.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_CircleArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_ContourArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Circle.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RectArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2D.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FaceArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Contour.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_MomentArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_ContourArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_LineArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_LineArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_CircleArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Rect.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FaceArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Size.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_MomentArrayStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RectArray.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowStamped.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Flow.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Moment.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Line.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Face.py"
+  "/home/weitung/excavation_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/__init__.py"
+)
+
+# Per-language clean rules from dependency scanning.
+FOREACH(lang)
+  INCLUDE(CMakeFiles/opencv_apps_generate_messages_py.dir/cmake_clean_${lang}.cmake OPTIONAL)
+ENDFOREACH(lang)

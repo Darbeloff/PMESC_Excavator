@@ -1,0 +1,39 @@
+FILE(REMOVE_RECURSE
+  "CMakeFiles/opencv_apps_generate_messages_cpp"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RotatedRect.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/CircleArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RotatedRectArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Point2DArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/ContourArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Circle.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/FlowArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RectArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Point2D.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/FaceArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Contour.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RotatedRectStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/FlowArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/MomentArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Point2DStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RotatedRectArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/ContourArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/LineArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/LineArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/CircleArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Rect.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Point2DArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/FaceArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Size.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/MomentArrayStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/RectArray.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/FlowStamped.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Flow.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Moment.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Line.h"
+  "/home/weitung/excavation_ws/devel/include/opencv_apps/Face.h"
+)
+
+# Per-language clean rules from dependency scanning.
+FOREACH(lang)
+  INCLUDE(CMakeFiles/opencv_apps_generate_messages_cpp.dir/cmake_clean_${lang}.cmake OPTIONAL)
+ENDFOREACH(lang)

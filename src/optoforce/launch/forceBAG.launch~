@@ -1,0 +1,15 @@
+<launch>
+    <!-- Experiment Playback -->
+    <param name ="/use_sim_time" value="true"/>  
+    <node pkg="rosbag" type="play" name="player" output="screen" 
+    args="--clock -r 0.05 -s 1 -u 7 /mnt/hgfs/Experiment-Data-MIT/6-28/_2017-06-28-15-56-53.bag"/>
+
+    <!-- weight Estimation Node -->
+--<node pkg="optoforce" type="weight_est.py" name="weight_estimation" output="screen">
+	<remap from="cal_Data"  to="/CalibratedJointVals2" />
+	<remap from="force_Data"  to="/optoforce_0" />
+	<param name="nb_sensor" value="1" />
+	<rosparam>
+     </rosparam>
+</node> -
+</launch>

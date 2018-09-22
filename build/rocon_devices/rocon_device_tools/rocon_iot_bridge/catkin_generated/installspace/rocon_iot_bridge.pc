@@ -1,0 +1,8 @@
+prefix=/home/weitung/excavation_ws/install
+
+Name: rocon_iot_bridge
+Description: Description of rocon_iot_bridge
+Version: 0.0.7
+Cflags: 
+Libs: -L/home/weitung/excavation_ws/install/lib 
+Requires: 

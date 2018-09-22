@@ -1,0 +1,6 @@
+set(rocon_iot_bridge_SETUP_PY_VERSION "0.0.7")
+set(rocon_iot_bridge_SETUP_PY_SCRIPTS "")
+set(rocon_iot_bridge_SETUP_PY_PACKAGES "rocon_iot_bridge")
+set(rocon_iot_bridge_SETUP_PY_PACKAGE_DIRS "src/rocon_iot_bridge")
+set(rocon_iot_bridge_SETUP_PY_MODULES "")
+set(rocon_iot_bridge_SETUP_PY_MODULE_DIRS "")

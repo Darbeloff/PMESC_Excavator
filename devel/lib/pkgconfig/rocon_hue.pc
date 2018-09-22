@@ -1,0 +1,8 @@
+prefix=/home/weitung/excavation_ws/devel
+
+Name: rocon_hue
+Description: Description of rocon_hue
+Version: 0.0.7
+Cflags: 
+Libs: -L/home/weitung/excavation_ws/devel/lib 
+Requires: 

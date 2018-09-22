@@ -1,0 +1,82 @@
+#!/usr/bin/python
+'''
+@author: fes
+'''
+
+import rospy
+from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import Float32
+
+from cv_bridge import CvBridge, CvBridgeError
+
+
+import numpy as np
+import cv2
+import video
+from opencv_apps.msg import FlowArrayStamped
+from opencv_apps.msg import Flow
+from opencv_apps.msg import Point2D
+from common import anorm2, draw_str
+from time import clock
+from time import sleep 
+from math import sqrt, cos
+
+class WeightEstimation:
+
+    def __init__(self):
+
+	rospy.init_node('weight_estimation_node', anonymous=True)
+	
+	self.posBoom   = []
+        self.posArm    = []
+        self.posBucket = []
+        self.velBoom   = []
+        self.velArm    = []
+        self.velBucket = [] 
+	self.subSensor = []
+	self.force     = []
+	
+
+	self.nb_sensor = rospy.get_param('~nb_sensor')
+	starting_index = rospy.get_param("~starting_index", 0)
+	
+	sub_Cal   = rospy.Subscriber('CalibratedJointVals3', JointState, self.cb_CalValue)
+	topic_basename = "optoforce_"
+	for i in self.nb_sensor:
+		self.subSensor[i] = rospy.Subscriber(topic_basename +
+                                                    str(starting_index + i),
+                                                    WrenchStamped, self.cb_ForceValue)
+
+    def cb_CalValue(self, msg):
+        try:
+            self.posBoom   = msg.position[0]
+            self.posArm    = msg.position[1]
+	    self.posBucket = msg.position[2]
+            self.velBoom   = msg.velocity[0]
+            self.velArm    = msg.velocity[1]
+	    self.velBucket = msg.velocity[2]
+        except :
+            print("ERRORCalValue")
+
+    def cb_ForceValue(self, msg):
+	try:
+            self.force.append(msg.wrench.force)
+        except :
+            print("ERRORForceValue")
+
+
+    def update(self):
+
+	F_t = np.array([force[0].wrench.force.x, force[0].wrench.force.y, force[0].wrench.force.z])	
+	 
+
+if __name__ == '__main__':
+    W = WeightEstimation()
+    try:
+	W.update()
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting down")
+    cv2.destroyAllWindows()
+

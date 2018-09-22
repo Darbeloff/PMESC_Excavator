@@ -1,8 +1,0 @@
-prefix=/home/weitung/excavation_ws/install
-
-Name: opt_flow
-Description: Description of opt_flow
-Version: 0.0.0
-Cflags: 
-Libs: -L/home/weitung/excavation_ws/install/lib 
-Requires: 

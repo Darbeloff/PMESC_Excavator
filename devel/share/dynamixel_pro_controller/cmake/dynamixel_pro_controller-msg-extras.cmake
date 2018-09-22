@@ -1,2 +1,0 @@
-set(dynamixel_pro_controller_MESSAGE_FILES "/home/weitung/excavation_ws/src/dynamixel_pro_controller/msg/JointEnable.msg;/home/weitung/excavation_ws/src/dynamixel_pro_controller/msg/ChainEnable.msg;/home/weitung/excavation_ws/src/dynamixel_pro_controller/msg/JointLimits.msg;/home/weitung/excavation_ws/src/dynamixel_pro_controller/msg/ChainLimits.msg")
-set(dynamixel_pro_controller_SERVICE_FILES "")

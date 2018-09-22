@@ -1,8 +1,0 @@
-prefix=/home/weitung/excavation_ws/install
-
-Name: opencv_apps
-Description: Description of opencv_apps
-Version: 1.11.15
-Cflags: -I/home/weitung/excavation_ws/install/include
-Libs: -L/home/weitung/excavation_ws/install/lib -lopencv_apps
-Requires: std_msgs

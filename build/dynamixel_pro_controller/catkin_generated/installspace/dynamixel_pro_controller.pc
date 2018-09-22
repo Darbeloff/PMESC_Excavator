@@ -1,8 +1,0 @@
-prefix=/home/weitung/excavation_ws/install
-
-Name: dynamixel_pro_controller
-Description: Description of dynamixel_pro_controller
-Version: 0.8.4
-Cflags: -I/home/weitung/excavation_ws/install/include
-Libs: -L/home/weitung/excavation_ws/install/lib 
-Requires: 

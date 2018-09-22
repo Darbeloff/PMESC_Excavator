@@ -1,8 +1,0 @@
-prefix=/home/weitung/excavation_ws/devel
-
-Name: rocon_smartthings_bridge
-Description: Description of rocon_smartthings_bridge
-Version: 0.0.7
-Cflags: 
-Libs: -L/home/weitung/excavation_ws/devel/lib 
-Requires: 

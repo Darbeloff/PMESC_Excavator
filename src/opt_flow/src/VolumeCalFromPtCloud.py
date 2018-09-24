@@ -21,27 +21,32 @@ from time import sleep
 from math import pi, sqrt, isnan
 from scipy import interpolate
 
-scale_factor = 0.005			#0.000000005
+scale_factor = 0.005			#0.000000005 this is used to normalize the volume value to a readable range
 offset = 0.0
 VOLUME_CAL_METHODS = 0 			#0: Add all pixels distance directly, 1: Pyramid method
-ENABLE_MASK = True			#Fill in all the undefined pixel values by interpolating their neighbors
+ENABLE_MASK = True				#Fill in all the undefined pixel values by interpolating their neighbors
 norm_max = 0.25
 
-def image_crop():
+def VolumeCalFromPtCloud():
 	#####################################################
 	#MAIN FUNCTION:
 	#initialize the node and set up all the subscriptions
+	#Only point cloud is used for the volume calculations
 	#####################################################
-	rospy.init_node('crop_image_node1', anonymous=True)				#Initialize the node
-	sub_Img = rospy.Subscriber('UBC_Image', CompressedImage, cb_CompImg)		#Subscribe/import the depth image
-	sub_rgbImg = rospy.Subscriber('RGB_Image', CompressedImage, cb_RGBImg)		#Subscribe/import the rgb image
-	sub_pcl = rospy.Subscriber('PointCloud', PointCloud2, cb_pcl)			#Subscribe/import the point cloud
+	rospy.init_node('volumeCalNode', anonymous=True)							#Initialize the node
+	#sub_Img = rospy.Subscriber('UBC_Image', CompressedImage, cb_CompImg)		#Subscribe/import the depth image
+	#sub_rgbImg = rospy.Subscriber('RGB_Image', CompressedImage, cb_RGBImg)		#Subscribe/import the rgb image
+	sub_pcl = rospy.Subscriber('PointCloud', PointCloud2, cb_pcl)				#Subscribe/import the point cloud
+
+def list2array(onedlist, height, width):
+	return np.array([[onedlist[j+i*width] for j in range(width)] for i in range(height)])
 
 def cb_pcl(cloud_msg):
-	cloud_points = list(point_cloud2.read_points(cloud_msg, skip_nans=False, field_names = ("x", "y", "z")))
-	c_array_reshaped = np.array([[cloud_points[j+i*cloud_msg.width] for j in range(cloud_msg.width)] for i in range(cloud_msg.height)])
+	cloud_points = list(point_cloud2.read_points(cloud_msg, skip_nans=False, field_names = ("x", "y", "z")))	#read point cloud points to a list
+	c_array_reshaped = list2array(cloud_points, cloud_msg.height, cloud_msg.width) 								#change 1D data to 2D
 	
-	ymin = rospy.get_param("~pcymin")
+	#Get the for points of the point cloud data, because IT WILL BE DIFFERENT FROM THE REGULAR IMAGE.
+	ymin = rospy.get_param("~pcymin")			
 	ymax = rospy.get_param("~pcymax")
 	xmin = rospy.get_param("~pcxmin")
 	xmax = rospy.get_param("~pcxmax")
@@ -51,9 +56,10 @@ def cb_pcl(cloud_msg):
 	crop_img_y = crop_img[:,:,1]
 	crop_img_z = crop_img[:,:,2]
 	
-	num_p = crop_img.shape[0]*crop_img.shape[1]
+	num_p = crop_img.shape[0]*crop_img.shape[1]		#number of points in the crop image
 	total_volume = 0
 
+	#Fill in all the undefined pixel values by interpolating their neighbors if ENABLE_MASK
 	if (ENABLE_MASK):
 		m_x = fill_in_hole(crop_img_x)
 		m_y = fill_in_hole(crop_img_y)
@@ -63,6 +69,7 @@ def cb_pcl(cloud_msg):
 		m_y = crop_img_y
 		m_z = crop_img_z
 
+	# Add all pixels distance to calculate the volume
 	if (VOLUME_CAL_METHODS == 0):
 		crop_img_total = np.sqrt(np.square(m_x) + np.square(m_y) + np.square(m_z))
 		total_volume += np.sum(crop_img_total)
@@ -74,6 +81,7 @@ def cb_pcl(cloud_msg):
 		cv2.imshow("pc_total", crop_img_total)
 		#########################################################
 
+	# pyramid method
 	elif (VOLUME_CAL_METHODS == 1):
 		for j in range(m_x.shape[0]-1):
 		    for i in range(m_x.shape[1]-1):
@@ -85,10 +93,10 @@ def cb_pcl(cloud_msg):
 		cv2.imshow("mx_total", m_x)
 		#########################################################
 
-	print(str(total_volume/num_p/scale_factor)+"          ")
+	print(str(total_volume/num_p/scale_factor)+"          ")	#This prints the total volume value that can be used to plot the relationship
 
-def fill_in_hole(point_cloud_axis_one_dim_data):
-	masked = cal_impaintMaskforBolt(point_cloud_axis_one_dim_data)
+def fill_in_hole(point_cloud_axis_one_axis_data):
+	masked = cal_impaintMaskforBolt(point_cloud_axis_one_axis_data)
 	valid_mask = ~np.isnan(masked)
 	coords = np.array(np.nonzero(valid_mask)).T
 	values = masked[valid_mask]
@@ -104,6 +112,7 @@ def fill_in_hole(point_cloud_axis_one_dim_data):
 	return filled	
 
 def cal_pyramid_volume(Matrix):
+	##Calculate the volume of the pyramid by the determinant of the matrix
 	return abs(np.linalg.det(Matrix))/6.0
 
 def cb_RGBImg(msg):
@@ -115,8 +124,6 @@ def cb_RGBImg(msg):
 	xmin = rospy.get_param("~xmin")
 	xmax = rospy.get_param("~xmax")
 	crop_img = Img_cv[ymin:ymax, xmin:xmax]
-	#cv2.imshow("cropped_rgb", crop_img)
-	#cv2.waitKey(3)
 
 def cb_CompImg(msg):
 	np_arr = np.fromstring(msg.data, np.uint8)
@@ -127,15 +134,6 @@ def cb_CompImg(msg):
 	xmin = rospy.get_param("~xmin")
 	xmax = rospy.get_param("~xmax")
 	crop_img = Img_cv[ymin:ymax, xmin:xmax] # ymin ymax xmin xmax
-	#crop_img[indices] = 0
-	#num_p = cal_valid_points(crop_img)
-	#num_p = crop_img.shape[0]*crop_img.shape[1]
-	#m = cal_impaintMask(crop_img)
-	#new_img = cv2.inpaint(crop_img,m,30,1)
-	#new_img = crop_img
-	#raw_volume = np.sum(crop_img)/num_p/scale_factor
-	#sand_volume = raw_volume - offset
-	#print(sand_volume)
 	cv2.imshow("cropped", crop_img)
 	cv2.waitKey(3)
 
@@ -164,7 +162,7 @@ def cal_valid_points(img):
 	return num_valid_points
 
 if __name__ == '__main__':
-    image_crop()
+    VolumeCalFromPtCloud()
     try:
         rospy.spin()
     except KeyboardInterrupt:

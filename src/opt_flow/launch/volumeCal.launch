@@ -10,7 +10,7 @@
 args="--clock -r 0.05 -s 9 -u 7 /mnt/hgfs/Experiment_Data_MIT/point_cloud_2018-05-04-15-42-45.bag"/>
 
 <!-- Crop Image Node -->
-<node pkg="opt_flow" type="crop_new.py" name="image_crop1" output="screen">
+<node pkg="opt_flow" type="VolumeCalFromPtCloud.py" name="volumeCal" output="screen">
         <remap from="UBC_Image"  to="/camera/depth/image_raw/compressed" />
 	<remap from="RGB_Image"  to="/camera/rgb/image_raw/compressed" />
 	<remap from="PointCloud"  to="/camera/depth/points" />

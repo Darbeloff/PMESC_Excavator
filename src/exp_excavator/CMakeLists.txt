@@ -50,9 +50,16 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  PowerMachine.msg
+  PowerBucket.msg
   JointValues.msg
+  JointCommandDynamixel.msg
+  JointCommandArduino.msg
   JointCalibration.msg
-)
+  JointStateMachineArduino.msg
+  Jacobian.msg
+  ForceWorld.msg
+  )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -192,7 +199,10 @@ include_directories(
 # catkin_add_nosetests(test)
 
 add_executable(epos_manager src/epos_manager.cpp)
+#add_executable(epos_manager2 src/epos_manager2.cpp)
+#add_executable(epos_manager3 src/epos_manager2.cpp)
 target_link_libraries(epos_manager ${catkin_LIBRARIES})
-
+#target_link_libraries(epos_manager2 ${catkin_LIBRARIES})
+#target_link_libraries(epos_manager3 ${catkin_LIBRARIES})
 #add_executable(epos_measure src/epos_measure.cpp)
 #target_link_libraries(epos_measure ${catkin_LIBRARIES})

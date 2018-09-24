@@ -133,8 +133,7 @@ class FBackFlowNodelet : public opencv_apps::Nodelet
         cv::calcOpticalFlowFarneback(prevgray, gray, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
         cv::cvtColor(prevgray, cflow, cv::COLOR_GRAY2BGR);
         //drawOptFlowMap(flow, cflow, 16, 1.5, Scalar(0, 255, 0));
-        int step = 8; //adjust the dot intervals
-
+        int step = 16;
         cv::Scalar color = cv::Scalar(0, 255, 0);
         for(int y = 0; y < cflow.rows; y += step)
           for(int x = 0; x < cflow.cols; x += step)
@@ -162,7 +161,7 @@ class FBackFlowNodelet : public opencv_apps::Nodelet
       //-- Show what you got
       if( debug_view_) {
         cv::imshow( window_name_, cflow );
-        int c = cv::waitKey(3);
+        int c = cv::waitKey(1);
       }
 
 

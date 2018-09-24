@@ -42,17 +42,17 @@ class soil_est():
 	
         	try:
 	    	    for i in range(len(flow_msg)):
-			        v_x.append(float(flow_msg[i].velocity.x))
-			        v_y.append(float(flow_msg[i].velocity.y))
-		      	    f_v_x += float(flow_msg[i].velocity.x)
-			        f_v_y += float(flow_msg[i].velocity.y)
-		    	    self.x_sum += f_v_x
-		    	    self.y_sum += f_v_y
-            	self.pub_est_x.publish(float(self.x_sum))
+		        v_x.append(float(flow_msg[i].velocity.x))
+		        v_y.append(float(flow_msg[i].velocity.y))
+	      	        f_v_x += float(flow_msg[i].velocity.x)
+		        f_v_y += float(flow_msg[i].velocity.y)
+	    	    self.x_sum += f_v_x
+	    	    self.y_sum += f_v_y
+            	    self.pub_est_x.publish(float(self.x_sum))
 	    	    self.pub_est_y.publish(float(self.y_sum))
 	    	    sleep(1)
         	except:
-            	print('Could not update')    
+            	    print('Could not update')    
 
 
 if __name__ == '__main__':

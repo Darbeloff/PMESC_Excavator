@@ -1,0 +1,20 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+<param name ="/use_sim_time" value="false"/> 
+<node pkg="rosbag" type="play" name="player" output="screen" 
+args="-s 0 -u 15 /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_3/SofttoHard_Imp05__2018-08-03-14-27-12.bag"/>
+
+<!-- Rosbag recording 
+  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_3/newcalibration_"/>-->
+
+<!-- Calibration node -->
+  <node pkg="exp_excavator" type="joint_calibrator2.py" name="joint_calibrator"
+          output="screen" >
+        <remap from="IMUBoom" to="/imu1/data" />
+        <remap from="IMUArm" to="/imu2/data" />
+  </node>
+
+</launch>
+
+

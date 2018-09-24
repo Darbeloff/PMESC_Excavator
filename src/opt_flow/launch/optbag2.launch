@@ -11,15 +11,15 @@
 
   <!-- Experiment Playback -->
 <node pkg="rosbag" type="play" name="player" output="screen" 
-args="--clock -r 0.001 -s 3 -u 5 /mnt/hgfs/Experiment-Data-MIT/6-16/_2017-06-17-15-14-28.bag"/>
+args="--clock -r 0.0075 -s 15.5 -u 2 /media/filippos/Data-Storage/Experiment-Data/_2017-06-16-17-02-28.bag"/>
 
 
   <!-- Optical flow Node -->
-<node pkg="opt_flow" type="opt_flow.py" name="opt_flow1" output="screen">
+<!--<node pkg="opt_flow" type="opt_flow.py" name="opt_flow1" output="screen">
         <remap from="UBC_Image"  to="/camera1/image_raw/compressed" />
         <rosparam>
      </rosparam>
-</node> 
+</node> -->
 
 
   <!-- Record Optical Flow Stats

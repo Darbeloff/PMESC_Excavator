@@ -1,0 +1,90 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+
+<!-- Rosbag recording -->
+  <node pkg="rosbag" type="record" name="recorder" args="record -a -o /home/d-lab/Documents/DATA/extremum_seeking_2/data_set_8/Data_"/>
+ 
+
+<!--ROSSERIAL node -->
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_node">
+    <param name="port" value="/dev/ttyACM0"/>
+    <param name="baud" value="57600"/>
+  </node>
+
+  <node pkg="rostopic" type="rostopic" name="logging_ping" args="pub /logging_ping std_msgs/Empty -r 100" output="screen"/>
+<!--rostopic echo -b Igain0_0_2018-03-21-16-49-31.bag -p /machine_state_arduino > Igain0.txt
+ -->
+
+<!-- JOYSTICK nodes -->
+  <node respawn="true" pkg="joy"
+        type="joy_node" name="joy_node_right" >
+    <remap from="joy" to="joy_right" />
+    <rosparam command="load"
+              file="$(find exp_excavator)/launch/joy_param_right.yaml" />
+  </node>
+  <node pkg="joy" type="joy_node" name="joy_node_left" >
+    <remap from="joy" to="joy_left" />
+    <rosparam command="load"
+              file="$(find exp_excavator)/launch/joy_param_left.yaml" />
+  </node>
+  <node pkg="exp_excavator" type="joy_msg_manager.py" name="joy_msg_manager"
+        output="screen" /> 
+  
+
+
+<!-- speed commander node -->
+  <node pkg="exp_excavator" type="controller4.py"
+        name="Control_Node" output="screen" />
+
+
+
+<!-- DYNAMIXEL nodes -->
+  <node pkg="exp_excavator" type="dynamixel_manager2.py"
+        name="dynamixel_manager" output="screen" />
+
+  <node name="dynamixel_pro_controller" pkg="dynamixel_pro_controller"
+        type="dynamixel_pro_controller_node" output="screen">
+    <remap from="joint_states" to="/joint_states_dynamixel" />
+    <remap from='joint_commands' to='dynamixel_communication'/>
+    <rosparam>
+      device: '/dev/ttyUSB0'
+      baudrate: 1000000
+      serial_timeout_ms: 10
+      servos: [{id: 3, joint_name: 'bucket_joint'}]
+      publish_velocities: true
+    </rosparam>
+  </node>  
+
+
+
+<!-- IMU node -->
+  <node pkg="um7" type="um7_driver" name="IMU1">
+        <param name="port" value="/dev/ttyUSB2" />
+        <remap from="imu" to="imu1" />
+  </node>
+
+  <node pkg="um7" type="um7_driver" name="IMU2">
+        <param name="port" value="/dev/ttyUSB1" />
+        <remap from="imu" to="imu2" />
+  </node>  
+
+
+
+<!-- Calibration node -->
+  <node pkg="exp_excavator" type="joint_calibrator2.py" name="joint_calibrator"
+          output="screen" >
+        <remap from="IMUBoom" to="/imu2/data" />
+        <remap from="IMUArm" to="/imu1/data" />
+  </node>
+
+
+<!-- Force Sensor -->
+  <include file="$(find optoforce)/launch/optoforce.launch"/> 
+
+<!-- Realsense Camera 
+  <include file="$(find realsense_camera)/launch/sr300_nodelet_default.launch" />-->
+
+</launch>
+
+

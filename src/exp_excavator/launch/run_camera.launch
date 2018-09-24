@@ -1,0 +1,15 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+
+<!-- Rosbag recording -->
+  <node pkg="rosbag" type="record" name="recorder" args="record -a
+ -o /home/d-lab/Documents/DATA/point_cloud"/>
+ 
+ 
+<!-- Realsense Camera -->
+  <include file="$(find realsense_camera)/launch/sr300_nodelet_rgbd.launch" />
+
+</launch>
+
+

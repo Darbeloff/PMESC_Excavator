@@ -7,7 +7,6 @@ import rospy
 #import opt_flow.msg as opt_msg
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -48,30 +47,20 @@ class LK_tracker:
         self.sub_Img = rospy.Subscriber('UBC_Image', Image, self.cb_Img)
 #        self.sub_Img = rospy.Subscriber('UBC_Image', CompressedImage, self.cb_CompImg)
         self.pub_Img = rospy.Publisher('Flow_Image', Image, queue_size=1)
-	self.pub_sum = rospy.Publisher('sum_value', Float32, queue_size=1)
-	self.pub_vy = rospy.Publisher('vy_value', Float32, queue_size=1)
         self.track_len = 4
-        self.detect_interval = 5			#find features every detect_interval of frames
+        self.detect_interval = 5
         self.tracks = []
         self.frame_idx = 0
 
-	self.ROI_xmin = 410
-	self.ROI_xmax = 620
-	self.ROI_ymin = 325
-	self.ROI_ymax = 425
-	self.vx = 0.0
-	self.vy = 0.0
-
-
     def cb_Img(self, msg):
         try:
-            image_decoded = self.bridge.imgmsg_to_cv2(msg,desired_encoding="bgr8")	#decode ROS messages to opencv format
+            image_decoded = self.bridge.imgmsg_to_cv2(msg,desired_encoding="bgr8")
             self.Img_cv = cv2.transpose(image_decoded)
             self.h, self.w = self.Img_cv.shape[:2]
             try:
                 self.flow_update()
-            except Exception as e:
-                print(e) 
+            except:
+                print('Could not update1')  
         except:
             print('Could not update2')     
             
@@ -97,13 +86,11 @@ class LK_tracker:
 #        print(len(self.tracks))		
         if len(self.tracks) > 0:
             img0, img1 = self.prev_gray, frame_gray
-            p0 = np.float32([tr[-1] for tr in self.tracks]).reshape(-1, 1, 2)		#current track points
-	    
-            p1, st, err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **self.lk_params) #p1 new track points, st status 1 if found 0 if not
-            p0r, st, err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **self.lk_params) #do it reversely to check if it's correct
-	    
+            p0 = np.float32([tr[-1] for tr in self.tracks]).reshape(-1, 1, 2)
+            p1, st, err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **self.lk_params)
+            p0r, st, err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **self.lk_params)
             d = abs(p0-p0r).reshape(-1, 2).max(-1)
-            good = d < 1 				#if forward and reverse are matched, accept minor differences
+            good = d < 1
             new_tracks = []
             XX = []
             XY = []
@@ -114,12 +101,12 @@ class LK_tracker:
                 if y<300:
                     continue     
                 
-                tr.append((x, y))	#add new points	
-                if len(tr) > self.track_len: 	#delete old points if to many points
+                tr.append((x, y))
+                if len(tr) > self.track_len:
                     del tr[0]
                 new_tracks.append(tr)
                 
-                XX.append(tuple(np.concatenate((np.subtract((x,y),(x_old, y_old)),[x,y]),axis=0))) #tuple of four values vx vy x y
+                XX.append(tuple(np.concatenate((np.subtract((x,y),(x_old, y_old)),[x,y]),axis=0)))
 #                XX.append(tuple(np.subtract((x,y),(x_old, y_old))))
                 XY.append((x,y))
             self.tracks = new_tracks
@@ -127,27 +114,11 @@ class LK_tracker:
             XY_array=np.array(XY)
 #            XX_norm = StandardScaler().fit_transform(XX_array)
             XX_norm = XX_array[:]
-	    
-	    #flag_in_ROI =  and XX_array[2] < self.ROI_wmax and XX_array[3] > self.ROI_hmin and XX_array[3] < self.ROI_hmax
-	    w = XX_array[np.where((XX_array[:,2] > self.ROI_xmin) & (XX_array[:,2] < self.ROI_xmax) & (XX_array[:,3] > self.ROI_ymin) & (XX_array[:,3] < self.ROI_ymax))]
-	    cv2.rectangle(vis,(self.ROI_xmin,self.ROI_ymin),(self.ROI_xmax,self.ROI_ymax),255,5)
-	    #cv2.rectangle(vis,(self.ROI_xmin,self.ROI_ymin),(300,200),255,-1)
-	    if w.shape[0] != 0:
-	    	self.vx += np.sum(w[:,0:1])/w.shape[0]
-	    	self.vy += np.sum(w[:,1:2])/w.shape[0]
-		self.pub_vy.publish(np.sum(w[:,1:2])/w.shape[0]*(-10))
-	    print(self.vx, self.vy)
 
-	    self.pub_sum.publish(abs(self.vy))
-
-	    #print(self.vx/self.num_in_ROI, self.vy/self.num_in_ROI)
-	    #cv2.imshow("i",vis)
-	    #cv2.waitKey(3)
-	    #print(w)
-            #print(np.divide(np.mean(XX_norm[:,2:3]),np.mean(XX_norm[:,0:1])))
+            print(np.divide(np.mean(XX_norm[:,2:3]),np.mean(XX_norm[:,0:1])))
             
-            XX_norm[:,0:2] *= 350.0   #in order to make the velocity and position values the same scale, normalize it
-            #print([np.std(XX_norm[:,0]),np.std(XX_norm[:,1]),np.std(XX_norm[:,2]),np.std(XX_norm[:,3])])
+            XX_norm[:,0:2] *= 350.0
+            print([np.std(XX_norm[:,0]),np.std(XX_norm[:,1]),np.std(XX_norm[:,2]),np.std(XX_norm[:,3])])
  #           XX_norm[:,2:3] *= 2*(0.5)
 #            cv2.circle(vis, (1, 1), 200, 0, -1)
 ############################################################################ 
@@ -155,16 +126,16 @@ class LK_tracker:
 
             dbscan = DBSCAN(eps=120, min_samples=30,).fit(XX_norm)
             labels = dbscan.labels_
-            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0) #if -1 then it's a noise cluster
+            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
             
             centroids = []
             if n_clusters_>0:
                 for l in range(1+n_clusters_) :
-                    XY_array_l = XY_array[np.where(labels==l)]  #np.where(labels==l) all points with same label (within same cluster)
+                    XY_array_l = XY_array[np.where(labels==l)]
                     centroids.append(np.mean(XY_array_l,axis=0))
                 
             HSV_tuples = [(xc*1.0/n_clusters_, 1, 1) for xc in range(n_clusters_)]
-            RGB_tuples = np.multiply(map(lambda xc: colorsys.hsv_to_rgb(*xc), HSV_tuples),255) #different color for each cluster
+            RGB_tuples = np.multiply(map(lambda xc: colorsys.hsv_to_rgb(*xc), HSV_tuples),255)
 
 
 #                print('Estimated number of clusters: %d' % n_clusters_)
@@ -223,17 +194,14 @@ class LK_tracker:
             
 ############################################################################ 
 ####                        Add new features to track                    ###
-        if self.frame_idx % self.detect_interval == 0:   		#find features every detect_interval of frames
-            mask = np.zeros_like(frame_gray)				#create mask for feature detecting, 255 yes 0 no
+        if self.frame_idx % self.detect_interval == 0:
+            mask = np.zeros_like(frame_gray)
             mask[:] = 255
-            for x, y in [np.int32(tr[-1]) for tr in self.tracks]:	#don't want to repeatedly detect the original feature??
+            for x, y in [np.int32(tr[-1]) for tr in self.tracks]:
                 cv2.circle(mask, (x, y), 5, 0, -1)
                 
-            cv2.rectangle(mask,(0,0),(self.w,300),0,-1)			#upper part 0-300 is masked
-	    #cv2.imshow("Image window", mask)
-	    #cv2.waitKey(3)
-	    #print(mask)
-            p = cv2.goodFeaturesToTrack(frame_gray, mask = mask, **self.feature_params)	#find all features and record it in p(matrix, all f points)
+            cv2.rectangle(mask,(0,0),(self.w,300),0,-1)
+            p = cv2.goodFeaturesToTrack(frame_gray, mask = mask, **self.feature_params)
             if p is not None:
                 for x, y in np.float32(p).reshape(-1, 2):
                     self.tracks.append([(x, y)])

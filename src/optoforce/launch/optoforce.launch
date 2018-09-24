@@ -1,6 +1,6 @@
 <launch>
   <!-- Serial port for the optoforce sensor -->
-  <arg name="port" default="/dev/ttyACM0"/>
+  <arg name="port" default="/dev/ttyACM1"/>
   <!-- Update speed. Available values:
         "Stop"
         "1000Hz"

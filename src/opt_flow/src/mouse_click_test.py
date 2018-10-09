@@ -22,7 +22,7 @@ flag = False
 
 def mouse_click_test():
 	rospy.init_node('mouse_click_test_node', anonymous=True)
-	sub_Img = rospy.Subscriber('UBC_Image', Image, cb_Img)
+	sub_Img = rospy.Subscriber('UBC_Image', Image, cb_Img)				#Subscribe the image Raw
 
 def click_and_crop(event, x, y, flags, param):
 	global refPt, image, flag

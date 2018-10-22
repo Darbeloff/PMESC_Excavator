@@ -18,7 +18,7 @@ from common import anorm2, draw_str
 from time import clock
 from time import sleep 
 
-CALIBRATE_MODE = 1  #0: Manual Calibration; 1: Use Corner Detection Method; 2: high pass to see the edges; 3: fflow
+CALIBRATE_MODE = 0  #0: Manual Calibration; 1: Use Corner Detection Method; 2: high pass to see the edges; 3: fflow
 
 class BucketTipMapping:
     def __init__(self):

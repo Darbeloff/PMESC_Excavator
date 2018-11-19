@@ -2,7 +2,8 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from sensor_msgs.msg import CompressedImage, JointState
+from sensor_msgs.msg import CompressedImage, JointState, PointCloud2
+from sensor_msgs import point_cloud2
 from opencv_apps.msg import FlowArrayStamped
 from opencv_apps.msg import Flow
 from opencv_apps.msg import Point2D
@@ -25,15 +26,19 @@ class BucketTipMapping:
         rospy.init_node('BucketTipMappingNode', anonymous=True)
         self.sub_Img = rospy.Subscriber('UBC_Image', Image, self.cb_Img)                    #Subscribe the image Raw from the bucket video ros bag
         self.sub_Cal   = rospy.Subscriber("cal_Data", JointState, self.cb_CalValue)         #Subscribe the Joint State
-        self.sub_Flow = rospy.Subscriber('Crop_Flow', FlowArrayStamped, self.cb_Flow)
-        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalibrationFile.txt", "w")    #open a file to write calibration data
+        self.sub_pcl = rospy.Subscriber('PointCloud', PointCloud2, self.cb_pcl)   
+
+        if CALIBRATE_MODE == 1: self.sub_Flow = rospy.Subscriber('Crop_Flow', FlowArrayStamped, self.cb_Flow)
+
+        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalibrationFile1.txt", "w")    #open a file to write calibration data
 
         # Initiate Necessary Parameters
         self.rate = 100                 #[Hz] the spin speed of the ros
 
         self.FlowArray = []
         self.BucketPosition = 0.0
-        self.RawImage = []
+        self.RawImage = np.array([])
+        self.rawImageLocal = []
 
         ##For Manual Calibration 
         self.flag = False
@@ -47,7 +52,8 @@ class BucketTipMapping:
         self.FlowArray = msg.flow
 
     def cb_CalValue(self, msg):
-        self.BucketPosition = msg.position[2]
+        self.BucketPosition = msg.position[0]
+        print(self.BucketPosition)
 
     def cb_Img(self, msg):
         bridge = CvBridge()
@@ -55,16 +61,47 @@ class BucketTipMapping:
         self.RawImage = cv2.transpose(image_decoded)
         #gray = cv2.cvtColor(cv2.transpose(image_decoded),cv2.COLOR_BGR2GRAY)
         #self.RawImage = np.float32(gray)
+
+    def cb_pcl(self, cloud_msg):
+        cloud_points = list(point_cloud2.read_points(cloud_msg, skip_nans=False, field_names = ("x", "y", "z")))    #read point cloud points to a list
+        c_array_reshaped = self.list2array(cloud_points, cloud_msg.height, cloud_msg.width)                              #change 1D data to 2D
+        self.pcl = cv2.transpose(c_array_reshaped)
+        #cv2.imshow("pc", Img_cv)
+        #cv2.waitKey(1)
+
+    def list2array(self, onedlist, height, width):
+        return np.array([[onedlist[j+i*width] for j in range(width)] for i in range(height)])
+
+    def writeToFile(self, bucketposition, grid):
+        """
+        This write the bucket position and the grid to the calibration file
+        bucket position is the first entry and the it is concatenated in row - row - row
+        """
+        rows = grid.shape[0]
+        cols = grid.shape[1]
+        s = str(bucketposition)+"\t"
+        for y in range(rows):
+            for x in range(cols):
+                s += str(grid[y][x]) + "\t"
+        self.calfile.write(s)
+        self.calfile.flush()
+
     
     def click_and_crop(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.refPt = [(x, y)]
 
-        elif event == cv2.EVENT_LBUTTONUP:
-            self.refPt.append((x, y))
-            cv2.line(self.RawImage, self.refPt[0], self.refPt[1], (0, 255, 0), 2)
-            cv2.imshow("image", self.RawImage)
-            self.flag = True
+        if event == cv2.EVENT_LBUTTONDOWN:
+            try:
+                self.refPt.append((x, y))
+            except:
+                self.refPt = [(x, y)]
+
+            cv2.circle(self.rawImageLocal,(x, y), 4, (0,0,255), -1)
+            cv2.imshow("image", self.rawImageLocal)
+            cv2.waitKey(1)
+
+            if len(self.refPt) == 4:
+                self.flag = True
+
 
     def findNearestCornerDetection(self, est_arr, detect_arr):
         detection_coor = []
@@ -116,16 +153,34 @@ class BucketTipMapping:
                     """
                     Use mouse call back to get the tips of the buckets
                     """
+                    if len(self.refPt) == 0:
+                        self.rawImageLocal = np.copy(self.RawImage)
+                        self.pclLocal = np.copy(self.pcl)
+                        bucketPositionLocal = self.BucketPosition
                     
-                    cv2.imshow("image", self.RawImage)
+                    #cv2.waitKey(10)
+                    cv2.imshow("image", self.rawImageLocal)
                     cv2.setMouseCallback("image", self.click_and_crop)
                     cv2.waitKey(0)
                     
                     if self.flag:
-                        self.index += 1
-                        self.calfile.write(str(self.refPt[0][0]) + " " + str(self.refPt[0][1]) + " " +str(self.refPt[1][0]) + " "+\
-                            str(self.refPt[1][1]) + "  " + str(self.BucketPosition) + "  \n")
+
+                        pts_before = np.float32([[self.refPt[0][0],self.refPt[0][1]],\
+                            [self.refPt[1][0],self.refPt[1][1]],[self.refPt[2][0],self.refPt[2][1]],[self.refPt[3][0],self.refPt[3][1]]])
+                        pts_after = np.float32([[0,0],[0,20],[20,20],[20,0]])
+                        trans_matrix = cv2.getPerspectiveTransform(pts_before,pts_after)
+                        res = cv2.warpPerspective(self.pclLocal,trans_matrix,(20,20))
+                        cv2.imshow("res", res)
+                        cv2.waitKey(1)
+
+                        self.writeToFile(bucketPositionLocal, res)
+                        """
+                        self.calfile.write(str(self.refPt[0][0]) + "\t" + str(self.refPt[0][1]) + "\t" +str(self.refPt[1][0]) + "\t"+\
+                            str(self.refPt[1][1]) + "\t" + str(self.refPt[2][0]) + "\t" + str(self.refPt[2][1]) + "\t" +\
+                            str(self.refPt[3][0]) + "\t"+ str(self.refPt[3][1]) + "\t" + str(bucketPositionLocal) + "\t")
                         self.calfile.flush()
+                        """
+                        self.refPt = []
                         self.flag = False
 
                 if CALIBRATE_MODE == 1:
@@ -170,6 +225,9 @@ class BucketTipMapping:
             r.sleep()
 
 if __name__ == '__main__':
+        import doctest
+        doctest.testmod()
+    
         bmapping = BucketTipMapping()
         rospy.sleep(0.2)
         try:
@@ -177,3 +235,4 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             print("Shutting down")
         cv2.destroyAllWindows()
+        

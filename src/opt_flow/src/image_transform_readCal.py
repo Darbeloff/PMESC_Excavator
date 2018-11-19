@@ -29,25 +29,28 @@ BucketPosition = 0.0
 ########################################
 def image_crop():
     global angle_map
-    rospy.init_node('crop_image_node', anonymous=True)
+    rospy.init_node('image_transform_node', anonymous=True)
     sub_Cal   = rospy.Subscriber("cal_Data", JointState, cb_CalValue)
     sub_Img = rospy.Subscriber('UBC_Image', Image, cb_Img)
     f = open(os.path.dirname(os.path.realpath(__file__)) +"/" + rospy.get_param("~Filename"), "r")
-    s = f.readlines()[0].split()
-    angle_map = np.array(s).reshape(len(s)/5,5)
-    angle_map = angle_map.astype(float)
+    s = f.readlines()
+    split_array = [string.split() for string in s]
+    angle_map = np.array(split_array)
+    #angle_map = angle_map.astype(float)
+    #angle_map[0] = float(angle_map[0])
+    print(angle_map[:,0])
 
 def cb_CalValue(msg):
     global BucketPosition
-    BucketPosition = msg.position[2]
+    BucketPosition = msg.position[0]
 
 def cb_Img(msg):
     global angle_map, BucketPosition
     map_l = angle_map.copy()
     Bucket_l = BucketPosition
     try:
-        Img_cv = decodeMsg2Img(msg) #decode ROS messages to Image Matrix
-        #print(Img_cv.shape)         #DEBUG print: see the shape of the image
+        Img_cv = decodeMsg2Img(msg)             #decode ROS messages to Image Matrix
+        #print(Img_cv.shape)                    #DEBUG print: see the shape of the image
 
         if abs(Bucket_l) > 2*pi:
             if Bucket_l > 0:
@@ -55,21 +58,22 @@ def cb_Img(msg):
             else:
                  Bucket_l += 2*pi
         print("Bucket_l: "+str(Bucket_l))
-        map_l[:,4] = abs(map_l[:,4]-Bucket_l)   #find which angle on the angle map is the closest to the current angle
-        a = map_l[np.argmin(map_l[:,4])]
+        map_l[:,0] = abs(map_l[:,0]-Bucket_l)   #find which angle on the angle map is the closest to the current angle
+        a = map_l[np.argmin(map_l[:,0])]
+        b = map_l[np.argsort(map_l[:,0])[-1]]
         print(a)
+        print(b)
+        
+        pts_before = np.float32([[a[0],a[1]],[a[2],a[3]],[a[4],a[5]],[a[6],a[7]]])
+        pts_after = np.float32([[0,0],[0,200],[200,200],[200,0]])
+        trans_matrix = cv2.getPerspectiveTransform(pts_before,pts_after)
+        res = cv2.warpPerspective(Img_cv,trans_matrix,(200,200))
 
-        #Evaluate four corners based on current mapping of the angle
-        ymin = int(a[1] - 50) if int(a[1] - 50) > 0 else 0
-        ymax = int(a[1] + 50) if int(a[1] + 50) < Img_cv.shape[0] else Img_cv.shape[0]
-        xmin = int(a[0] - 20) if int(a[0] - 20) > 0 else 0
-        xmax = int(a[2] + 20) if int(a[2] + 20) < Img_cv.shape[1] else Img_cv.shape[1]
-        crop_img = Img_cv[ymin:ymax, xmin:xmax] # ymin ymax xmin xmax
-        cv2.imshow("cropped", crop_img)
+        cv2.imshow("cropped", res)
         cv2.waitKey(1)
 
         pub_Img = rospy.Publisher('Crop_Image', Image, queue_size=1)        #publish the message Crop_Image and send it to the optical flow
-        pub_Img.publish(CvBridge().cv2_to_imgmsg(crop_img, "bgr8"))
+        pub_Img.publish(CvBridge().cv2_to_imgmsg(res, "bgr8"))
 
     except:
         print('Could not update')    
@@ -88,4 +92,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Shutting down")
     cv2.destroyAllWindows()
+
+
 

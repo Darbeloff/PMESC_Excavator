@@ -5,11 +5,9 @@
 
 <!-- Crop Image Node -->
 <node pkg="opt_flow" type="img_crop.py" name="image_crop" output="screen">
-        <remap from="UBC_Image"  to="/camera1/image_raw" />
-	    <param name="ymin" value="325" />
-        <param name="ymax" value="425" />
-        <param name="xmin" value="410" />
-        <param name="xmax" value="620" />
+    <remap from="UBC_Image"  to="/camera1/image_raw" />
+    <remap from="cal_Data"  to="/CalibratedJoints" />
+    <param name="Filename" value="data_1212.txt" />
         <rosparam>
      </rosparam>
 </node>  

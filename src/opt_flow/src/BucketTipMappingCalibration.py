@@ -8,6 +8,7 @@ from opencv_apps.msg import FlowArrayStamped
 from opencv_apps.msg import Flow
 from opencv_apps.msg import Point2D
 from std_msgs.msg import Float32
+from scipy.interpolate import Rbf
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -22,6 +23,10 @@ from time import sleep
 CALIBRATE_MODE = 0  #0: Manual Calibration; 1: Use Corner Detection Method; 2: high pass to see the edges; 3: fflow
 
 class BucketTipMapping:
+    """
+    Import Note for the users: If you want to calibrate the bucket,
+    you must select the corners in the order, top left, bottom left, bottom right, top right
+    """
     def __init__(self):
         rospy.init_node('BucketTipMappingNode', anonymous=True)
         self.sub_Img = rospy.Subscriber('UBC_Image', Image, self.cb_Img)                    #Subscribe the image Raw from the bucket video ros bag
@@ -30,10 +35,10 @@ class BucketTipMapping:
 
         if CALIBRATE_MODE == 1: self.sub_Flow = rospy.Subscriber('Crop_Flow', FlowArrayStamped, self.cb_Flow)
 
-        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalibrationFile1.txt", "w")    #open a file to write calibration data
+        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalFile.txt", "w")    #open a file to write calibration data
 
         # Initiate Necessary Parameters
-        self.rate = 100                 #[Hz] the spin speed of the ros
+        self.rate = 1000                 #[Hz] the spin speed of the ros
 
         self.FlowArray = []
         self.BucketPosition = 0.0
@@ -83,6 +88,7 @@ class BucketTipMapping:
         for y in range(rows):
             for x in range(cols):
                 s += str(grid[y][x]) + "\t"
+        s+="\n"
         self.calfile.write(s)
         self.calfile.flush()
 
@@ -159,18 +165,41 @@ class BucketTipMapping:
                         bucketPositionLocal = self.BucketPosition
                     
                     #cv2.waitKey(10)
+                    #cv2.imshow("pcl", self.pclLocal)
                     cv2.imshow("image", self.rawImageLocal)
                     cv2.setMouseCallback("image", self.click_and_crop)
                     cv2.waitKey(0)
                     
                     if self.flag:
 
-                        pts_before = np.float32([[self.refPt[0][0],self.refPt[0][1]],\
-                            [self.refPt[1][0],self.refPt[1][1]],[self.refPt[2][0],self.refPt[2][1]],[self.refPt[3][0],self.refPt[3][1]]])
-                        pts_after = np.float32([[0,0],[0,20],[20,20],[20,0]])
-                        trans_matrix = cv2.getPerspectiveTransform(pts_before,pts_after)
-                        res = cv2.warpPerspective(self.pclLocal,trans_matrix,(20,20))
+                        corners_array = [[self.refPt[0][0],self.refPt[0][1]],\
+                            [self.refPt[1][0],self.refPt[1][1]],[self.refPt[2][0],self.refPt[2][1]],[self.refPt[3][0],self.refPt[3][1]]]
+
+                        # Find the transformation between the square and the image
+                        pts_before = [[0,0],[0,20],[20,20],[20,0]]
+                        pts_after = corners_array
+                        trans_matrix = cv2.getPerspectiveTransform(np.float32(pts_before),np.float32(pts_after))
+                        trans_matrix_inv = cv2.getPerspectiveTransform(np.float32(pts_after),np.float32(pts_before))
+
+                        
+                        x, y, d = getRBFInputs(np.array([corners_array], dtype=np.int32), self.pclLocal)
+                        d = np.nan_to_num(d)
+                        rbf_r = Rbf(x, y, d[:,0])
+                        rbf_g = Rbf(x, y, d[:,1])
+                        rbf_b = Rbf(x, y, d[:,2])
+
+                        xi, yi = findRBFNodes(20,20,trans_matrix)
+                        dr = rbf_r(xi,yi)
+                        dg = rbf_g(xi,yi)
+                        db = rbf_b(xi,yi)
+                        rbfout = getRBFOutputs(dr, dg, db, 20, 20)
+                        print(rbfout.shape)
+                        
+                        res = cv2.warpPerspective(self.pclLocal,trans_matrix_inv,(20,20))
                         cv2.imshow("res", res)
+                        cv2.waitKey(1)
+
+                        cv2.imshow("out", rbfout)
                         cv2.waitKey(1)
 
                         self.writeToFile(bucketPositionLocal, res)
@@ -224,10 +253,76 @@ class BucketTipMapping:
 
             r.sleep()
 
+
+def findRBFNodes(size_x, size_y, transform):
+    """
+    x = findRBFNodes(2, 2, np.array([[1,0], [0,1]]))
+    print(x)
+    """
+    x = np.linspace(0, size_x, size_x+1)
+    y = np.linspace(0, size_y, size_y+1)
+
+    for yn in y:
+        for xn in x:
+            try:
+                out = np.vstack((out,(np.matmul(transform,np.array([ [xn],[yn],[1] ]))).T))
+            except:
+                out = (np.matmul(transform,np.array([[xn],[yn],[1]]))).T
+
+    print(out)
+    return out[:,0], out[:,1]
+
+
+def getRBFInputs(pts, img):
+    """
+    >>> x = getRBFInputs(np.array([[[1,1],[10,1],[10,7],[1,2]]], dtype=np.int32), np.zeros((10,10,10)))
+    >>> print(x)
+    """
+    # blank mask:
+    mask = np.zeros_like(img)
+
+    #pts = np.array(pts, dtype=np.int32)
+    # filling pixels inside the polygon defined by "vertices" with the fill color
+    cv2.fillPoly(mask, pts, 255)
+    cv2.imshow("mask",mask)
+    cv2.waitKey(0)
+    indices = np.where(mask != 0)
+    print(len(indices[0]))
+    values = img[indices[0],indices[1],:]
+    print(values.shape)
+
+    return indices[0], indices[1], values
+
+def getRBFOutputs(dr, dg, db, size_x, size_y):
+    """
+    >>> x = getRBFOutputs([1,2,3,25,42,1], [2,3,4,2,3,4], [4,5,6, 7, 8, 9],3,2)
+    >>> print(x)
+    """
+    ret = []
+    for yidx in range(size_y):
+        dum = []
+        for xidx in range(size_x):
+            i = yidx*size_x+xidx
+            dum.append((dr[i], dg[i], db[i]))
+        ret.append(dum)
+
+    return np.array(ret)
+
+def testRBF(xi, yi):
+    """
+    >>> testRBF(13.5, 12.5)
+    """
+    x = np.linspace(0, 20, 21)
+    y = np.linspace(0, 20, 21)
+    d = np.power(x,2)+np.power(y,2)
+    rbf = Rbf(x,y,d)
+    print("Result: ", rbf(xi, yi))
+
 if __name__ == '__main__':
         import doctest
         doctest.testmod()
-    
+        
+        
         bmapping = BucketTipMapping()
         rospy.sleep(0.2)
         try:
@@ -235,4 +330,6 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             print("Shutting down")
         cv2.destroyAllWindows()
+        
+        
         

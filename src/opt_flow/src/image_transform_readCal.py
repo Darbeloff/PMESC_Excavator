@@ -34,11 +34,12 @@ def image_crop():
     sub_Img = rospy.Subscriber('UBC_Image', Image, cb_Img)
     f = open(os.path.dirname(os.path.realpath(__file__)) +"/" + rospy.get_param("~Filename"), "r")
     s = f.readlines()
-    split_array = [string.split() for string in s]
-    angle_map = np.array(split_array)
+    split_array = decodeCalFile(s)
+    #split_array = [string.split() for string in s]
+    print(split_array.shape)
     #angle_map = angle_map.astype(float)
     #angle_map[0] = float(angle_map[0])
-    print(angle_map[:,0])
+    #print(angle_map[:,1])
 
 def cb_CalValue(msg):
     global BucketPosition
@@ -84,6 +85,30 @@ def decodeMsg2Img(msg):
     image_decoded = bridge.imgmsg_to_cv2(msg,desired_encoding="bgr8")   #decode ROS messages to opencv format
     Img_cv = cv2.transpose(image_decoded)
     return Img_cv
+
+def decodeCalFile(s):
+    output = []
+    for string in s:
+        split = string.split("\t")
+        out_single = []
+        for sq in split:
+            if '[' in sq:
+                o = sq.replace("[","")
+                o = o.replace("]","")
+                sq = o.split()
+                ret = []
+                for num in sq:
+                    ret.append(float(num))
+            else:
+                try:
+                    ret = float(sq)
+                except:
+                    print(sq)
+                    ret = 0
+            out_single.append(ret)
+        output.append(out_single)
+
+    return np.array(output)
 
 if __name__ == '__main__':
     image_crop()

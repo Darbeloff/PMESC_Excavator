@@ -12,7 +12,7 @@ args="--clock -r 0.02 -s 7 -u 7 /mnt/hgfs/Experiment_Data_MIT/bucket_video_test_
 <node pkg="opt_flow" type="image_transform_readCal.py" name="image_transform" output="screen">
     <remap from="UBC_Image"  to="/camera/color/image_raw" />
     <remap from="cal_Data"  to="/joint_states_dynamixel" />
-    <param name="Filename" value="CalibrationFile1.txt"/>
+    <param name="Filename" value="CalFile.txt"/>
         <rosparam>
      </rosparam>
 </node>  

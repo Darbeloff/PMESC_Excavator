@@ -34,7 +34,7 @@ def image_crop():
     sub_Img = rospy.Subscriber('UBC_Image', Image, cb_Img)
     f = open(os.path.dirname(os.path.realpath(__file__)) +"/" + rospy.get_param("~Filename"), "r")
     s = f.readlines()
-    split_array = decodeCalFile(s)
+    split_array, angle_map = decodeCalFile(s)
     #split_array = [string.split() for string in s]
     print(split_array.shape)
     #angle_map = angle_map.astype(float)
@@ -86,10 +86,13 @@ def decodeMsg2Img(msg):
     Img_cv = cv2.transpose(image_decoded)
     return Img_cv
 
+
 def decodeCalFile(s):
     output = []
+    output_angle = []
+
     for string in s:
-        split = string.split("\t")
+        split = s.split("\t")
         out_single = []
         for sq in split:
             if '[' in sq:
@@ -99,16 +102,19 @@ def decodeCalFile(s):
                 ret = []
                 for num in sq:
                     ret.append(float(num))
+                out_single.append(ret)
+            elif sq == '\n':
+                pass
             else:
                 try:
-                    ret = float(sq)
+                    output_angle.append(float(sq))
                 except:
-                    print(sq)
-                    ret = 0
-            out_single.append(ret)
+                    print("***Error Input***", sq)
+                    print()
         output.append(out_single)
 
-    return np.array(output)
+    return np.array(output), np.array(output_angle)
+
 
 if __name__ == '__main__':
     image_crop()

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import rospy
+import copy
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage, JointState, PointCloud2
 from sensor_msgs import point_cloud2
@@ -18,7 +19,7 @@ import os
 import video
 from common import anorm2, draw_str
 from time import clock
-from time import sleep 
+from time import sleep
 
 CALIBRATE_MODE = 0  #0: Manual Calibration; 1: Use Corner Detection Method; 2: high pass to see the edges; 3: fflow
 
@@ -35,7 +36,7 @@ class BucketTipMapping:
 
         if CALIBRATE_MODE == 1: self.sub_Flow = rospy.Subscriber('Crop_Flow', FlowArrayStamped, self.cb_Flow)
 
-        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalFile.txt", "w")    #open a file to write calibration data
+        self.calfile = open(os.path.dirname(os.path.realpath(__file__)) +"/CalFile3.txt", "w")    #open a file to write calibration data
 
         # Initiate Necessary Parameters
         self.rate = 1000                 #[Hz] the spin speed of the ros
@@ -101,8 +102,8 @@ class BucketTipMapping:
             except:
                 self.refPt = [(x, y)]
 
-            cv2.circle(self.rawImageLocal,(x, y), 4, (0,0,255), -1)
-            cv2.imshow("image", self.rawImageLocal)
+            cv2.circle(self.pclLocal,(x, y), 4, (0,0,255), -1)
+            cv2.imshow("pcl_x", self.pclLocal)
             cv2.waitKey(1)
 
             if len(self.refPt) == 4:
@@ -165,9 +166,13 @@ class BucketTipMapping:
                         bucketPositionLocal = self.BucketPosition
                     
                     #cv2.waitKey(10)
-                    #cv2.imshow("pcl", self.pclLocal)
-                    cv2.imshow("image", self.rawImageLocal)
-                    cv2.setMouseCallback("image", self.click_and_crop)
+                    pcl_clone = copy.deepcopy(self.pclLocal)
+                    pcl_clone = np.nan_to_num(pcl_clone)
+                    cv2.imshow("pcl_x", self.pclLocal)
+                    #cv2.imshow("pcl_y", self.pclLocal[:,:,1])
+                    #cv2.imshow("pcl_z", self.pclLocal[:,:,2])
+                    #cv2.imshow("image", self.rawImageLocal)
+                    cv2.setMouseCallback("pcl_x", self.click_and_crop)
                     cv2.waitKey(0)
                     
                     if self.flag:
@@ -176,33 +181,46 @@ class BucketTipMapping:
                             [self.refPt[1][0],self.refPt[1][1]],[self.refPt[2][0],self.refPt[2][1]],[self.refPt[3][0],self.refPt[3][1]]]
 
                         # Find the transformation between the square and the image
-                        pts_before = [[0,0],[0,20],[20,20],[20,0]]
+                        pts_before = [[0,0],[0,10],[10,10],[10,0]]
                         pts_after = corners_array
                         trans_matrix = cv2.getPerspectiveTransform(np.float32(pts_before),np.float32(pts_after))
                         trans_matrix_inv = cv2.getPerspectiveTransform(np.float32(pts_after),np.float32(pts_before))
 
+                        x, y, d = getRBFInputs(np.array([corners_array], dtype=np.int32), pcl_clone)
                         
-                        x, y, d = getRBFInputs(np.array([corners_array], dtype=np.int32), self.pclLocal)
-                        d = np.nan_to_num(d)
-                        rbf_r = Rbf(x, y, d[:,0])
-                        rbf_g = Rbf(x, y, d[:,1])
-                        rbf_b = Rbf(x, y, d[:,2])
+                        # I swapped rbf_x and rbf_y because the orientation of the
+                        # camera and what I defined is different
+                        rbf_x = Rbf(x[::8], y[::8], d[::8,1])
+                        rbf_y = Rbf(x[::8], y[::8], d[::8,0])
+                        rbf_z = Rbf(x[::8], y[::8], d[::8,2])
 
-                        xi, yi = findRBFNodes(20,20,trans_matrix)
-                        dr = rbf_r(xi,yi)
-                        dg = rbf_g(xi,yi)
-                        db = rbf_b(xi,yi)
-                        rbfout = getRBFOutputs(dr, dg, db, 20, 20)
+                        xi, yi = findRBFNodes(10,10,trans_matrix)
+                        """
+                        value_x = []
+                        value_y = []
+                        value_z = []
+                        for y_node in yi:
+                            for x_node in xi:
+                                dx, dy, dz = calculateRBF(x_node, y_node, 5, self.pclLocal)
+                                value_x.append(dx)
+                                value_y.append(dy)
+                                value_z.append(dz)
+                        """
+                        value_x = rbf_x(xi, yi)
+                        value_y = rbf_y(xi, yi)
+                        value_z = rbf_z(xi, yi)
+
+                        rbfout = getRBFOutputs(value_x, value_y, value_z, 10, 10)
                         print(rbfout.shape)
                         
-                        res = cv2.warpPerspective(self.pclLocal,trans_matrix_inv,(20,20))
+                        res = cv2.warpPerspective(pcl_clone,trans_matrix_inv,(10,10))
                         cv2.imshow("res", res)
                         cv2.waitKey(1)
 
-                        cv2.imshow("out", rbfout)
+                        cv2.imshow("out_x", rbfout)
                         cv2.waitKey(1)
 
-                        self.writeToFile(bucketPositionLocal, res)
+                        self.writeToFile(bucketPositionLocal, rbfout)
                         """
                         self.calfile.write(str(self.refPt[0][0]) + "\t" + str(self.refPt[0][1]) + "\t" +str(self.refPt[1][0]) + "\t"+\
                             str(self.refPt[1][1]) + "\t" + str(self.refPt[2][0]) + "\t" + str(self.refPt[2][1]) + "\t" +\
@@ -269,8 +287,34 @@ def findRBFNodes(size_x, size_y, transform):
             except:
                 out = (np.matmul(transform,np.array([[xn],[yn],[1]]))).T
 
-    print(out)
+    print(out[:,1].flatten())
     return out[:,0], out[:,1]
+
+def calculateRBF(x_node, y_node, offset, img):
+    img_clone = copy.deepcopy(img)
+    xlow = int(x_node-offset)
+    xhigh = int(x_node+offset+1)
+    ylow = int(y_node-offset)
+    yhigh = int(y_node+offset+1)
+
+    x_indices = []
+    y_indices = []
+    for y in range(ylow, yhigh):
+        for x in range(xlow, xhigh):
+            x_indices.append(x)
+            y_indices.append(y)
+
+    x_indices = np.array(x_indices)
+    y_indices = np.array(y_indices)
+
+    val = img_clone[x_indices, y_indices, :]
+    val = np.nan_to_num(val)
+
+    r1 = Rbf(x_indices,y_indices,val[:,0])
+    r2 = Rbf(x_indices,y_indices,val[:,1])
+    r3 = Rbf(x_indices,y_indices,val[:,2])
+
+    return r1(x_node, y_node), r2(x_node, y_node), r3(x_node, y_node)
 
 
 def getRBFInputs(pts, img):
@@ -284,28 +328,30 @@ def getRBFInputs(pts, img):
     #pts = np.array(pts, dtype=np.int32)
     # filling pixels inside the polygon defined by "vertices" with the fill color
     cv2.fillPoly(mask, pts, 255)
-    cv2.imshow("mask",mask)
-    cv2.waitKey(0)
     indices = np.where(mask != 0)
-    print(len(indices[0]))
+    #print(indices[1][0:50])
     values = img[indices[0],indices[1],:]
-    print(values.shape)
+    delete_index = np.where(values == 0.0)
+    val = np.delete(values, delete_index, 0)
+    x = np.delete(indices[0], delete_index, None)
+    y = np.delete(indices[1], delete_index, None)
+    #print(values.shape)
 
-    return indices[0], indices[1], values
+    return x,y,val
 
-def getRBFOutputs(dr, dg, db, size_x, size_y):
+def getRBFOutputs(dx, dy, dz, size_x, size_y):
     """
-    >>> x = getRBFOutputs([1,2,3,25,42,1], [2,3,4,2,3,4], [4,5,6, 7, 8, 9],3,2)
+    >>> x = getRBFOutputs([1,2,3,25,42,1,4,5,2], [2,3,4,2,3,4,4,6,4], [4,5,6, 7, 8, 9,1,2,3],3,3)
     >>> print(x)
     """
+    m = np.min(dz)
     ret = []
-    for yidx in range(size_y):
+    for xidx in range(size_x):
         dum = []
-        for xidx in range(size_x):
+        for yidx in range(size_y):
             i = yidx*size_x+xidx
-            dum.append((dr[i], dg[i], db[i]))
+            dum.append([dx[i], dy[i], dz[i]])
         ret.append(dum)
-
     return np.array(ret)
 
 def testRBF(xi, yi):
